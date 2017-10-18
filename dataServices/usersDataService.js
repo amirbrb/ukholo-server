@@ -10,22 +10,7 @@ const loginType = {
   facebook: 3
 }
 
-var usersData = [{
-	"uid": "1",
-	"mail": "a@a.com", 
-	"password": "aaa", 
-	"firstName": "amir",
-	"lastName": "mishori",
-	"phoneNumber": "0547772344",
-	"avatar": "avatar.jpg",
-	"showLocation": false,
-	"settings": {
-		"loginType": loginType.mail,
-		"sosControlLocation": {
-			
-		}
-	}
-}];
+var usersData = [];
 
 module.exports = {
 	register: function(mail, password, firstName, lastName, phoneNumber){
@@ -39,7 +24,7 @@ module.exports = {
 
 		//insert user to db and return model
 		var userId = usersData.length + 1;
-		var user = userModel(firstName, lastName, '/images/avatar.png', userId, {
+		var user = userModel(firstName, lastName, null, userId, {
 			sosControlLocation: {}
 		});
 
@@ -50,7 +35,7 @@ module.exports = {
 			firstName: firstName,
 			lastName: lastName,
 			phoneNumber: phoneNumber,
-			avatar: '/images/avatar.png',
+			avatar: null,
 			showLocation: false,
 			settings: {
 				loginType: loginType.mail,
