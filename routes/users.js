@@ -37,4 +37,15 @@ router.post('/login', function (req, res) {
 	
 });
 
+router.post('/relogin', function (req, res) {
+	var mail = req.body.mail;
+	var loginResponse = usersDataService.getUserByName(mail);
+	if(loginResponse.isSuccess){
+		res.send(jsonSuccess(startupData(loginResponse.loginData)))	
+	} else{
+		res.send(jsonFailure(loginResponse.loginError))
+	}
+	
+});
+
 module.exports = router

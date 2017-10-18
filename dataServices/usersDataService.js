@@ -3,21 +3,33 @@ const userModel = require('../models/user');
 const registrationResponse = require('../models/registration/registrationResponse');
 const loginResponse = require('../models/registration/loginResponse');
 
-const mockUserData = [{
+
+const loginType = {
+  mail: 1,
+  google: 2, 
+  facebook: 3
+}
+
+var usersData = [{
 	"uid": "1",
-	"mail": "amirbrb@gmail.com", 
+	"mail": "a@a.com", 
 	"password": "aaa", 
 	"firstName": "amir",
 	"lastName": "mishori",
 	"phoneNumber": "0547772344",
 	"avatar": "avatar.jpg",
 	"showLocation": false,
+	"settings": {
+		"loginType": loginType.mail,
+		"sosControlLocation": {
+			
+		}
+	}
 }];
 
 module.exports = {
 	register: function(mail, password, firstName, lastName, phoneNumber){
-		
-		var existingUser = mockUserData.find(function(user){
+		var existingUser = usersData.find(function(user){
 			return user.mail === mail;
 		});
 
@@ -26,13 +38,33 @@ module.exports = {
 		}
 
 		//insert user to db and return model
-		let userId = mockUserData.length + 1;
-		let user = userModel(firstName, lastName, 'avatar.png', userId);
+		var userId = usersData.length + 1;
+		var user = userModel(firstName, lastName, '/images/avatar.png', userId, {
+			sosControlLocation: {}
+		});
+
+		usersData.push({
+			uid: userId,
+			mail: mail, 
+			password: password, 
+			firstName: firstName,
+			lastName: lastName,
+			phoneNumber: phoneNumber,
+			avatar: '/images/avatar.png',
+			showLocation: false,
+			settings: {
+				loginType: loginType.mail,
+				sosControlLocation: {
+					
+				}
+			}		
+		})
+
 		return registrationResponse(true, user);
 	},
 	login: function(mail, password){
 		
-		var existingUser = mockUserData.find(function(user){
+		var existingUser = usersData.find(function(user){
 			return user.mail === mail;
 		});
 
@@ -41,11 +73,39 @@ module.exports = {
 				return loginResponse(false, null, "sorry, password is incorrect");	
 			else
 			{
-				let user = userModel(existingUser.firstName, existingUser.lastName, existingUser.avatar, existingUser.uid)
+				var imageUrl = '/images/user/' + existingUser.uid + '/' + existingUser.avatar;
+				var user = userModel(existingUser.firstName, existingUser.lastName, imageUrl, existingUser.uid, {
+					sosControlLocation: existingUser.settings.sosControlLocation
+				})
 				return loginResponse(true, user);	
 			}
 		}else{
 			return loginResponse(false, null, 'sorry, could not find this user');	
+		}
+	},
+	getUserByName: function(mail, password){
+		
+		var existingUser = usersData.find(function(user){
+			return user.mail === mail;
+		});
+
+		if(existingUser){
+			var imageUrl = '/images/user/' + existingUser.uid + '/' + existingUser.avatar;
+			var user = userModel(existingUser.firstName, existingUser.lastName, imageUrl, existingUser.uid, {
+				sosControlLocation: existingUser.settings.sosControlLocation
+			})
+			return loginResponse(true, user);	
+		}else{
+			return loginResponse(false, null, 'sorry, could not find this user');	
+		}
+	}, 
+	updateSettings: function(settings, uid){
+		var existingUser = usersData.find(function(user){
+			return user.uid === uid;
+		});
+
+		if(existingUser){
+			existingUser.settings = settings;
 		}
 	}
 }

@@ -21,7 +21,7 @@ router.get('/:id', function (req, res) {
 	res.sendFile(file, options);
 });
 
-router.get('/user/:uid/photos/:id', function (req, res) {
+router.get('/user/:uid/:id', function (req, res) {
 	var uid = req.params.uid, 
 		file = req.params.id;
 

@@ -2,7 +2,7 @@ const express = require('express')
 const app = express();
 const bodyParser = require('body-parser')
 
-let port = process.env.PORT || 3000;
+var port = process.env.PORT || 3000;
 
 //body parser
 app.use(bodyParser.urlencoded({ extended: false }));
