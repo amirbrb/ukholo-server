@@ -1,4 +1,5 @@
 const jsonSuccess = require('../models/jsonSuccess');
+const jsonFailure = require('../models/jsonFailure');
 const userModel = require('../models/user');
 const registrationResponse = require('../models/registration/registrationResponse');
 const loginResponse = require('../models/registration/loginResponse');
@@ -10,22 +11,7 @@ const loginType = {
   facebook: 3
 }
 
-var usersData = [{
-	"uid": "1",
-	"mail": "a@a.com", 
-	"password": "aaa", 
-	"firstName": "amir",
-	"lastName": "mishori",
-	"phoneNumber": "0547772344",
-	"avatar": "avatar.jpg",
-	"showLocation": false,
-	"settings": {
-		"loginType": loginType.mail,
-		"sosControlLocation": {
-			
-		}
-	}
-}];
+var usersData = [];
 
 module.exports = {
 	register: function(mail, password, firstName, lastName, phoneNumber){
@@ -83,14 +69,16 @@ module.exports = {
 			return loginResponse(false, null, 'sorry, could not find this user');	
 		}
 	},
-	getUserByName: function(mail, password){
+	getUserByName: function(mail){
 		
 		var existingUser = usersData.find(function(user){
 			return user.mail === mail;
 		});
 
 		if(existingUser){
-			var imageUrl = '/images/user/' + existingUser.uid + '/' + existingUser.avatar;
+			var imageUrl = existingUser.avatar ? 
+				'/images/user/' + existingUser.uid + '/' + existingUser.avatar : 
+				'images/avatar.png';
 			var user = userModel(existingUser.firstName, existingUser.lastName, imageUrl, existingUser.uid, {
 				sosControlLocation: existingUser.settings.sosControlLocation
 			})
@@ -99,13 +87,17 @@ module.exports = {
 			return loginResponse(false, null, 'sorry, could not find this user');	
 		}
 	}, 
-	updateSettings: function(settings, uid){
+	saveUserSettings: function(userId, settings){
 		var existingUser = usersData.find(function(user){
-			return user.uid === uid;
+			return user.uid === userId;
 		});
 
 		if(existingUser){
 			existingUser.settings = settings;
+			return jsonSuccess();
+		}
+		else{
+			return jsonFailure();	
 		}
 	}
 }
