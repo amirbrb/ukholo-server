@@ -38,6 +38,13 @@ app.use('/users', users);
 const images = require('./routes/images');
 app.use('/images', images);
 
+const sos = require('./routes/sos');
+app.use('/sos', sos);
+
+app.post('/wow', function(req, res){
+    console.log(req.body);
+})
+
 
 app.listen(port, function () {
   console.log('MustB server started at port', port)

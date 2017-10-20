@@ -45,7 +45,17 @@ router.post('/relogin', function (req, res) {
 	} else{
 		res.send(jsonFailure(loginResponse.loginError))
 	}
-	
+});
+
+router.post('/settings', function(req, res){
+	var userId = req.body.userId;
+	var settings = req.body.settings;
+	var response = usersDataService.saveUserSettings(userId, settings);
+	if(response.isSuccess){
+		res.send(jsonSuccess());
+	} else{
+		res.send(jsonFailure());
+	}
 });
 
 module.exports = router
