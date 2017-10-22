@@ -4,10 +4,12 @@ const multer = require('multer')
 const Guid = require('guid')
 const jsonSuccess = require('../models/jsonSuccess');
 const jsonFailure = require('../models/jsonFailure');
+const helpDataService = require('../dataServices/helpDataService');
+
 
 var storage = multer.diskStorage({
     destination: function(req, file, callback) {
-    	var userId = req.body.userId;
+        var userId = req.body.userId;
         callback(null, 'img/users/' + userId);
     },
     filename: function(req, file, callback) {
@@ -17,21 +19,22 @@ var storage = multer.diskStorage({
     }
 });
 
-var upload = multer({storage: storage}).any();
+var upload = multer({ storage: storage }).any();
 
-router.use(function (req, res, next) {
-  next();
+router.use(function(req, res, next) {
+    next();
 });
 
-router.post('/text', function (req, res) {
-	upload(req, res, function (err) {
-    	if (err) {
-      		console.log(err);
-	    }
-	    else{
-	    	console.log('ok');
-	    }
-  	})
+router.get('/', function(req, res) {
+    var location = req.body.locaation;
+    var issues = helpDataService.getHelpCases(location);
+    res.send(issues);
+});
+
+router.post('/text', function(req, res) {
+    upload(req, res, function(err) {
+
+    })
 });
 
 module.exports = router
