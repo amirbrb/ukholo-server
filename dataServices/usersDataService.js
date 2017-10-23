@@ -42,7 +42,9 @@ module.exports = {
 				loginType: loginType.mail,
 				sosControlLocation: {
 
-				}
+				},
+				viewType: 1,
+				mapZoomLevel: 14
 			}
 		})
 
@@ -60,7 +62,9 @@ module.exports = {
 			else {
 				var imageUrl = '/images/user/' + existingUser.uid + '/' + existingUser.avatar;
 				var user = userModel(existingUser.firstName, existingUser.lastName, imageUrl, existingUser.uid, {
-					sosControlLocation: existingUser.settings.sosControlLocation
+					sosControlLocation: existingUser.settings.sosControlLocation,
+					viewType: existingUser.settings.viewType,
+					mapZoomLevel: existingUser.settings.mapZoomLevel
 				})
 				return loginResponse(true, user);
 			}
@@ -80,7 +84,9 @@ module.exports = {
 				'/user/' + existingUser.uid + '/' + existingUser.avatar :
 				'/avatar.png';
 			var user = userModel(existingUser.firstName, existingUser.lastName, imageUrl, existingUser.uid, {
-				sosControlLocation: existingUser.settings.sosControlLocation
+				sosControlLocation: existingUser.settings.sosControlLocation,
+				viewType: existingUser.settings.viewType,
+				mapZoomLevel: existingUser.settings.mapZoomLevel
 			})
 			return loginResponse(true, user);
 		}
@@ -99,7 +105,9 @@ module.exports = {
 				'/user/' + existingUser.uid + '/' + existingUser.avatar :
 				'/avatar.png';
 			var user = userModel(existingUser.firstName, existingUser.lastName, imageUrl, existingUser.uid, {
-				sosControlLocation: existingUser.settings.sosControlLocation
+				sosControlLocation: existingUser.settings.sosControlLocation,
+				viewType: existingUser.settings.viewType,
+				mapZoomLevel: existingUser.settings.mapZoomLevel
 			})
 			return user;
 		}
