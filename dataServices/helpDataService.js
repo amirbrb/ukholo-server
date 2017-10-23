@@ -1,100 +1,31 @@
 const jsonSuccess = require('../models/jsonSuccess');
 const jsonFailure = require('../models/jsonFailure');
+const userDataService = require('./usersDataService');
 const Guid = require('guid');
 
-var sosData = [{
-        userImage: 'avatar.png',
-        title: 'case title1',
-        description: 'case desription dkflm,nvlk lkjnlkjlkjl case desriptionfvb fdkjdlkkj  dlkfjldkfj case desriptionfvb fdkjdlkkj  dlkfjldkfj',
-        id: Guid.create()
-    },
-    {
-        userImage: 'avatar.png',
-        title: 'case title3',
-        description: 'case desription svdv df sddf case desriptionfvb fdkjdlkkj  dlkfjldkfj',
-        id: Guid.create()
-    },
-    {
-        userImage: 'avatar.png',
-        title: 'case title4',
-        description: 'case desriptionfvb fdkjdlkkj  dlkfjldkfj case desriptionfvb fdkjdlkkj  dlkfjldkfj',
-        id: Guid.create()
-    },
-    {
-        userImage: 'avatar.png',
-        title: 'case title4',
-        description: 'case desriptionfvb fdkjdlkkj  dlkfjldkfj',
-        id: Guid.create()
-    },
-    {
-        userImage: 'avatar.png',
-        title: 'case title4',
-        description: 'case desriptionfvb fdkjdlkkj  dlkfjldkfj case desriptionfvb fdkjdlkkj  dlkfjldkfj',
-        id: Guid.create()
-    },
-    {
-        userImage: 'avatar.png',
-        title: 'case title4',
-        description: 'case desriptionfvb fdkjdlkkj  dlkfjldkfj',
-        id: Guid.create()
-    },
-    {
-        userImage: 'avatar.png',
-        title: 'case title4',
-        description: 'case desriptionfvb fdkjdlkkj  dlkfjldkfj',
-        id: Guid.create()
-    },
-    {
-        userImage: 'avatar.png',
-        title: 'case title4',
-        description: 'case desriptionfvb fdkjdlkkj  dlkfjldkfj',
-        id: Guid.create()
-    },
-    {
-        userImage: 'avatar.png',
-        title: 'case title4',
-        description: 'case desriptionfvb fdkjdlkkj  dlkfjldkfj',
-        id: Guid.create()
-    },
-    {
-        userImage: 'avatar.png',
-        title: 'case title4',
-        description: 'case desriptionfvb fdkjdlkkj  dlkfjldkfj',
-        id: Guid.create()
-    },
-    {
-        userImage: 'avatar.png',
-        title: 'case title4',
-        description: 'case desriptionfvb fdkjdlkkj  dlkfjldkfj',
-        id: Guid.create()
-    },
-    {
-        userImage: 'avatar.png',
-        title: 'case title4',
-        description: 'case desriptionfvb fdkjdlkkj  dlkfjldkfj',
-        id: Guid.create()
-    },
-    {
-        userImage: 'avatar.png',
-        title: 'case title4',
-        description: 'case desriptionfvb fdkjdlkkj  dlkfjldkfj',
-        id: Guid.create()
-    },
-    {
-        userImage: 'avatar.png',
-        title: 'case title4',
-        description: 'case desriptionfvb fdkjdlkkj  dlkfjldkfj',
-        id: Guid.create()
-    },
-    {
-        userImage: 'avatar.png',
-        title: 'case title4',
-        description: 'case desriptionfvb fdkjdlkkj  dlkfjldkfj',
-        id: Guid.create()
-    }
-];
+var sosData = [];
 
 module.exports = {
+    addHelpCase(userId, title, description, lat, lng) {
+        var userData = userDataService.getUserById(userId);
+        if (userData) {
+            var guid = Guid.create();
+            sosData.push({
+                userImage: userData.imageUrl,
+                location: {
+                    lat: lat,
+                    lng: lng
+                },
+                title: title,
+                description: description,
+                id: guid
+            });
+
+            return jsonSuccess();
+        }
+
+        return jsonFailure("could not find user with id " + userId);
+    },
     getHelpCases(location) {
         return sosData;
     }

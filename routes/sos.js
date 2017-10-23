@@ -33,6 +33,8 @@ router.get('/', function(req, res) {
 
 router.post('/text', function(req, res) {
     upload(req, res, function(err) {
+        var uploadResult = helpDataService.addHelpCase(req.body.userId, req.body.title, req.body.description, req.body.lat, req.body.lng);
+        res.send(uploadResult);
 
     })
 });
