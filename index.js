@@ -13,7 +13,6 @@ app.use(express.static(__dirname + 'img'))
 
 //cors
 app.use(function(req, res, next) {
-
     // Website you wish to allow to connect
     res.setHeader('Access-Control-Allow-Origin', '*');
 
@@ -40,10 +39,6 @@ app.use('/images', images);
 
 const sos = require('./routes/sos');
 app.use('/sos', sos);
-
-app.post('/wow', function(req, res) {
-    console.log(req.body);
-})
 
 app.listen(port, function() {
     console.log('MustB server started at port', port)
