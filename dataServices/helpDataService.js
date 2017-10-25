@@ -6,10 +6,9 @@ const Guid = require('guid');
 var sosData = [];
 
 module.exports = {
-    addHelpCase(userId, title, description, lat, lng) {
+    addHelpCase(caseId, userId, title, description, lat, lng, images) {
         var userData = userDataService.getUserById(userId);
         if (userData) {
-            var guid = Guid.create();
             sosData.push({
                 userImage: userData.imageUrl,
                 location: {
@@ -18,7 +17,9 @@ module.exports = {
                 },
                 title: title,
                 description: description,
-                id: guid
+                id: caseId,
+                userId: userId,
+                images: images
             });
 
             return jsonSuccess();
@@ -28,5 +29,20 @@ module.exports = {
     },
     getHelpCases(location) {
         return sosData;
+    },
+    getHelpCaseById(id) {
+        var existingCase = sosData.find(function(helpCase) {
+            return helpCase.id === id;
+        });
+
+        if (existingCase) {
+            return jsonSuccess({
+                helpCase: existingCase
+            })
+        }
+
+        return jsonFailure({
+            message: 'could not fing case with id ' + id
+        })
     }
 }

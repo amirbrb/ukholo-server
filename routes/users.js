@@ -20,13 +20,6 @@ router.post('/register', function(req, res) {
 
 	var registrationResponse = usersDataService.register(mail, password, firstName, lastName, phoneNumber);
 	if (registrationResponse.isSuccess) {
-		debugger;
-		var dir = path.resolve('./img/users/' + registrationResponse.registrationData.userId);
-
-		if (!fs.existsSync(dir)) {
-			fs.mkdirSync(dir);
-		}
-
 		res.send(jsonSuccess(startupData(registrationResponse.registrationData)))
 	}
 	else {

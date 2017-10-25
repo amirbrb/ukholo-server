@@ -36,7 +36,7 @@ module.exports = {
 			firstName: firstName,
 			lastName: lastName,
 			phoneNumber: phoneNumber,
-			avatar: null,
+			avatar: 'avatar.png',
 			showLocation: false,
 			settings: {
 				loginType: loginType.mail,
@@ -60,7 +60,7 @@ module.exports = {
 			if (existingUser.password !== password)
 				return loginResponse(false, null, "sorry, password is incorrect");
 			else {
-				var imageUrl = '/images/user/' + existingUser.uid + '/' + existingUser.avatar;
+				var imageUrl = '/images/' + existingUser.avatar;
 				var user = userModel(existingUser.firstName, existingUser.lastName, imageUrl, existingUser.uid, {
 					sosControlLocation: existingUser.settings.sosControlLocation,
 					viewType: existingUser.settings.viewType,
@@ -80,9 +80,7 @@ module.exports = {
 		});
 
 		if (existingUser) {
-			var imageUrl = existingUser.avatar ?
-				'/user/' + existingUser.uid + '/' + existingUser.avatar :
-				'/avatar.png';
+			var imageUrl = '/images/' + existingUser.avatar;
 			var user = userModel(existingUser.firstName, existingUser.lastName, imageUrl, existingUser.uid, {
 				sosControlLocation: existingUser.settings.sosControlLocation,
 				viewType: existingUser.settings.viewType,
@@ -101,9 +99,7 @@ module.exports = {
 		});
 
 		if (existingUser) {
-			var imageUrl = existingUser.avatar ?
-				'/user/' + existingUser.uid + '/' + existingUser.avatar :
-				'/avatar.png';
+			var imageUrl = '/images/' + existingUser.avatar;
 			var user = userModel(existingUser.firstName, existingUser.lastName, imageUrl, existingUser.uid, {
 				sosControlLocation: existingUser.settings.sosControlLocation,
 				viewType: existingUser.settings.viewType,

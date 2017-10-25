@@ -9,12 +9,11 @@ const helpDataService = require('../dataServices/helpDataService');
 
 var storage = multer.diskStorage({
     destination: function(req, file, callback) {
-        var userId = req.body.userId;
-        callback(null, 'img/users/' + userId);
+        callback(null, 'img/');
     },
     filename: function(req, file, callback) {
-        var fileName = Guid.create();
-        fileName += ".jpg";
+        var caseId = req.helpId.value;
+        var fileName = caseId + '_' + file.originalname;
         callback(null, fileName);
     }
 });
@@ -32,11 +31,27 @@ router.get('/', function(req, res) {
 });
 
 router.post('/text', function(req, res) {
+    req.helpId = Guid.create();
     upload(req, res, function(err) {
-        var uploadResult = helpDataService.addHelpCase(req.body.userId, req.body.title, req.body.description, req.body.lat, req.body.lng);
+        var images = req.files.map(img => {
+            return img.filename
+        });
+        var uploadResult = helpDataService.addHelpCase(req.helpId.value,
+            req.body.userId,
+            req.body.title,
+            req.body.description,
+            req.body.lat,
+            req.body.lng,
+            images
+        );
         res.send(uploadResult);
-
     })
+});
+
+router.get('/:id/', function(req, res) {
+    var id = req.params.id;
+    var helpCaseResult = helpDataService.getHelpCaseById(id);
+    res.send(helpCaseResult);
 });
 
 module.exports = router
