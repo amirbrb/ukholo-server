@@ -6,26 +6,27 @@ const Guid = require('guid');
 var sosData = [];
 
 module.exports = {
-    addHelpCase(caseId, userId, title, description, lat, lng, images) {
-        var userData = userDataService.getUserById(userId);
-        if (userData) {
-            sosData.push({
-                userImage: userData.imageUrl,
-                location: {
-                    lat: lat,
-                    lng: lng
-                },
-                title: title,
-                description: description,
-                id: caseId,
-                userId: userId,
-                images: images
-            });
+    addHelpCase(caseId, userId, title, description, lat, lng, images, next) {
+        userDataService.getUserById(userId, function(userData) {
+            if (userData) {
+                sosData.push({
+                    userImage: userData.imageUrl,
+                    location: {
+                        lat: lat,
+                        lng: lng
+                    },
+                    title: title,
+                    description: description,
+                    id: caseId,
+                    userId: userId,
+                    images: images
+                });
 
-            return jsonSuccess();
-        }
+                next(jsonSuccess());
+            }
 
-        return jsonFailure("could not find user with id " + userId);
+            next(jsonFailure("could not find user with id " + userId));
+        });
     },
     getHelpCases(location) {
         return sosData;

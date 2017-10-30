@@ -36,15 +36,17 @@ router.post('/text', function(req, res) {
         var images = req.files.map(img => {
             return img.filename
         });
-        var uploadResult = helpDataService.addHelpCase(req.helpId.value,
+        helpDataService.addHelpCase(req.helpId.value,
             req.body.userId,
             req.body.title,
             req.body.description,
             req.body.lat,
             req.body.lng,
-            images
+            images,
+            function(uploadResult) {
+                res.send(uploadResult);
+            }
         );
-        res.send(uploadResult);
     })
 });
 

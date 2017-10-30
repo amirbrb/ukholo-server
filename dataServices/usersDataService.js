@@ -1,8 +1,12 @@
 const jsonSuccess = require('../models/jsonSuccess');
 const jsonFailure = require('../models/jsonFailure');
 const userModel = require('../models/user');
+const Guid = require("guid");
 const registrationResponse = require('../models/registration/registrationResponse');
 const loginResponse = require('../models/registration/loginResponse');
+const mongoConnector = require("./mongoConnector");
+
+const USERS_COLLECTION = "users";
 
 
 const loginType = {
@@ -14,114 +18,130 @@ const loginType = {
 var usersData = [];
 
 module.exports = {
-	register: function(mail, password, firstName, lastName, phoneNumber) {
-		var existingUser = usersData.find(function(user) {
-			return user.mail === mail;
-		});
+	register: function(mail, password, firstName, lastName, phoneNumber, avatar, next) {
+		var existingUser = mongoConnector.find({
+			mail: mail
+		}, USERS_COLLECTION);
 
 		if (existingUser) {
-			return registrationResponse(false, null, "sorry, provided mail is used");
+			next(registrationResponse(false, null, "sorry, provided mail is used"));
 		}
 
+
+		var guid = Guid.create();
 		//insert user to db and return model
-		var userId = usersData.length + 1;
-		var user = userModel(firstName, lastName, null, userId, {
+		var user = userModel(firstName, lastName, avatar, guid.value, {
 			sosControlLocation: {}
 		});
 
-		usersData.push({
-			uid: userId,
+		mongoConnector.add({
+			_id: guid.value,
+			uid: guid.value,
 			mail: mail,
 			password: password,
 			firstName: firstName,
 			lastName: lastName,
 			phoneNumber: phoneNumber,
-			avatar: 'avatar.png',
-			showLocation: false,
+			avatar: avatar || 'avatar.png',
 			settings: {
 				loginType: loginType.mail,
 				sosControlLocation: {
 
 				},
+				showLocation: false,
 				viewType: 1,
 				mapZoomLevel: 14
 			}
-		})
-
-		return registrationResponse(true, user);
-	},
-	login: function(mail, password) {
-
-		var existingUser = usersData.find(function(user) {
-			return user.mail === mail;
+		}, USERS_COLLECTION, function() {
+			next(registrationResponse(true, user));
+		}, function(err) {
+			console.log(err);
+			throw "an error occured registering user [mail=" + mail + "]";
 		});
+	},
+	login: function(mail, password, next) {
 
-		if (existingUser) {
-			if (existingUser.password !== password)
-				return loginResponse(false, null, "sorry, password is incorrect");
+		mongoConnector.find({
+			mail: mail
+		}, USERS_COLLECTION, function(existingUser) {
+			if (existingUser) {
+				if (existingUser.password !== password)
+					next(loginResponse(false, null, "sorry, password is incorrect"));
+				else {
+					var imageUrl = existingUser.avatar;
+					var user = userModel(existingUser.firstName, existingUser.lastName, imageUrl, existingUser.uid, {
+						sosControlLocation: existingUser.settings.sosControlLocation,
+						viewType: existingUser.settings.viewType,
+						mapZoomLevel: existingUser.settings.mapZoomLevel
+					})
+					next(loginResponse(true, user));
+				}
+			}
 			else {
+				next(loginResponse(false, null, 'sorry, could not find this user'));
+			}
+		}, function(err) {
+			console.log(err);
+			throw "an error occured logging user [mail=" + mail + "]";
+		});
+	},
+	getUserByName: function(mail, next) {
+
+		var existingUser = mongoConnector.find({
+			mail: mail
+		}, USERS_COLLECTION, function(existingUser) {
+			if (existingUser) {
 				var imageUrl = '/images/' + existingUser.avatar;
 				var user = userModel(existingUser.firstName, existingUser.lastName, imageUrl, existingUser.uid, {
 					sosControlLocation: existingUser.settings.sosControlLocation,
 					viewType: existingUser.settings.viewType,
 					mapZoomLevel: existingUser.settings.mapZoomLevel
 				})
-				return loginResponse(true, user);
+				next(loginResponse(true, user));
 			}
-		}
-		else {
-			return loginResponse(false, null, 'sorry, could not find this user');
-		}
-	},
-	getUserByName: function(mail) {
-
-		var existingUser = usersData.find(function(user) {
-			return user.mail === mail;
+			else {
+				next(loginResponse(false, null, 'sorry, could not find this user'));
+			}
+		}, function(err) {
+			console.log(err);
+			throw "an error occured getting user by name [mail=" + mail + "]";
 		});
-
-		if (existingUser) {
-			var imageUrl = '/images/' + existingUser.avatar;
-			var user = userModel(existingUser.firstName, existingUser.lastName, imageUrl, existingUser.uid, {
-				sosControlLocation: existingUser.settings.sosControlLocation,
-				viewType: existingUser.settings.viewType,
-				mapZoomLevel: existingUser.settings.mapZoomLevel
-			})
-			return loginResponse(true, user);
-		}
-		else {
-			return loginResponse(false, null, 'sorry, could not find this user');
-		}
 	},
-	getUserById: function(userId) {
-
-		var existingUser = usersData.find(function(user) {
-			return user.uid === parseInt(userId);
+	getUserById: function(userId, next) {
+		var existingUser = mongoConnector.find({
+			uid: userId
+		}, USERS_COLLECTION, function(existingUser) {
+			if (existingUser) {
+				var imageUrl = existingUser.avatar;
+				var user = userModel(existingUser.firstName, existingUser.lastName, imageUrl, existingUser.uid, {
+					sosControlLocation: existingUser.settings.sosControlLocation,
+					viewType: existingUser.settings.viewType,
+					mapZoomLevel: existingUser.settings.mapZoomLevel
+				})
+				next(user);
+			}
+			else {
+				next();
+			}
+		}, function(err) {
+			console.log(err);
+			throw "an error occured getting user by id [id=" + userId + "]";
 		});
-
-		if (existingUser) {
-			var imageUrl = '/images/' + existingUser.avatar;
-			var user = userModel(existingUser.firstName, existingUser.lastName, imageUrl, existingUser.uid, {
-				sosControlLocation: existingUser.settings.sosControlLocation,
-				viewType: existingUser.settings.viewType,
-				mapZoomLevel: existingUser.settings.mapZoomLevel
-			})
-			return user;
-		}
-		else {
-			return null;
-		}
 	},
-	saveUserSettings: function(userId, settings) {
-		var existingUser = usersData.find(function(user) {
-			return user.uid === userId;
+	saveUserSettings: function(userId, settings, next) {
+		var existingUser = mongoConnector.find({
+			uid: userId
+		}, USERS_COLLECTION, function(existingUser) {
+			if (existingUser) {
+				existingUser.settings = settings;
+				next(jsonSuccess());
+			}
+			else {
+				next(jsonFailure());
+			}
+		}, function(err) {
+			console.log(err);
+			throw "an error occured saving settings for user [id=" + userId + "]";
 		});
-
-		if (existingUser) {
-			existingUser.settings = settings;
-			return jsonSuccess();
-		}
-		else {
-			return jsonFailure();
-		}
 	}
 }
