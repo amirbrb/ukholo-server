@@ -54,5 +54,36 @@ module.exports = {
                     error(err);
                 });
         });
+    },
+    search: function(query, collectionName, next, error) {
+        connect().then((db) => {
+            var collection = db.collection(collectionName);
+            collection.find(query).toArray(function(err, items) {
+                if (err)
+                    error(err);
+                else {
+                    db.close();
+                    var arr = [];
+                    arr.push.apply(arr, items)
+                    next(arr);
+                }
+            });
+        });
+    },
+    findAll: function(collectionName, next, error) {
+        connect().then((db) => {
+            var collection = db.collection(collectionName);
+            collection.find().toArray(function(err, items) {
+                if (err)
+                    error(err);
+                else {
+                    db.close();
+                    var arr = [];
+                    arr.push.apply(arr, items)
+                    next(arr);
+                }
+            });
+        });
     }
+
 }

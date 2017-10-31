@@ -5,7 +5,6 @@ const Guid = require("guid");
 const registrationResponse = require('../models/registration/registrationResponse');
 const loginResponse = require('../models/registration/loginResponse');
 const mongoConnector = require("./mongoConnector");
-
 const USERS_COLLECTION = "users";
 
 
@@ -134,7 +133,14 @@ module.exports = {
 		}, USERS_COLLECTION, function(existingUser) {
 			if (existingUser) {
 				existingUser.settings = settings;
-				next(jsonSuccess());
+				mongoConnector.edit({
+					uid: userId
+				}, existingUser, USERS_COLLECTION, function(response) {
+					next(jsonSuccess());
+				}, function(err) {
+					console.log(err);
+					throw "an error occured updating user settings by id [id=" + userId + "]";
+				});
 			}
 			else {
 				next(jsonFailure());
