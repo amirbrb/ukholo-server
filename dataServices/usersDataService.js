@@ -1,79 +1,69 @@
 const jsonSuccess = require('../models/jsonSuccess');
 const jsonFailure = require('../models/jsonFailure');
-const userModel = require('../models/user');
 const Guid = require("guid");
 const registrationResponse = require('../models/registration/registrationResponse');
 const loginResponse = require('../models/registration/loginResponse');
 const mongoConnector = require("./mongoConnector");
-const USERS_COLLECTION = "users";
-
+const config = require("./config/collections");
 
 const loginType = {
 	mail: 1,
 	google: 2,
 	facebook: 3
-}
-
-var usersData = [];
+};
 
 module.exports = {
-	register: function(mail, password, firstName, lastName, phoneNumber, avatar, next) {
+	register: function(mail, password, name, phoneNumber, avatar, next) {
 		var existingUser = mongoConnector.find({
 			mail: mail
-		}, USERS_COLLECTION);
+		}, config.userCollection);
 
 		if (existingUser) {
 			next(registrationResponse(false, null, "sorry, provided mail is used"));
 		}
 
+		avatar = avatar || 'avatar.png';
 
 		var guid = Guid.create();
-		//insert user to db and return model
-		var user = userModel(firstName, lastName, avatar, guid.value, {
-			sosControlLocation: {}
-		});
-
-		mongoConnector.add({
+		var user = {
 			_id: guid.value,
-			uid: guid.value,
+			userId: guid.value,
 			mail: mail,
 			password: password,
-			firstName: firstName,
-			lastName: lastName,
+			name: name,
 			phoneNumber: phoneNumber,
-			avatar: avatar || 'avatar.png',
+			avatar: avatar,
+			currentLocation: {},
 			settings: {
-				loginType: loginType.mail,
-				sosControlLocation: {
-
+				alerts: {
+					distance: 10000
 				},
-				showLocation: false,
+				sosControlLocation: {},
 				viewType: 1,
 				mapZoomLevel: 14
+			},
+			description: '',
+			gender: 3
+		};
+		//insert user to db and return model
+		mongoConnector.add(user, config.userCollection,
+			next(registrationResponse(true, user)),
+			function(err) {
+				console.log(err);
+				throw "an error occured registering user [mail=" + mail + "]";
 			}
-		}, USERS_COLLECTION, function() {
-			next(registrationResponse(true, user));
-		}, function(err) {
-			console.log(err);
-			throw "an error occured registering user [mail=" + mail + "]";
-		});
+		);
 	},
 	login: function(mail, password, next) {
 
 		mongoConnector.find({
 			mail: mail
-		}, USERS_COLLECTION, function(existingUser) {
+		}, config.userCollection, function(existingUser) {
 			if (existingUser) {
 				if (existingUser.password !== password)
 					next(loginResponse(false, null, "sorry, password is incorrect"));
 				else {
-					var imageUrl = existingUser.avatar;
-					var user = userModel(existingUser.firstName, existingUser.lastName, imageUrl, existingUser.uid, {
-						sosControlLocation: existingUser.settings.sosControlLocation,
-						viewType: existingUser.settings.viewType,
-						mapZoomLevel: existingUser.settings.mapZoomLevel
-					})
-					next(loginResponse(true, user));
+					next(loginResponse(true, existingUser));
 				}
 			}
 			else {
@@ -85,18 +75,11 @@ module.exports = {
 		});
 	},
 	getUserByName: function(mail, next) {
-
-		var existingUser = mongoConnector.find({
+		mongoConnector.find({
 			mail: mail
-		}, USERS_COLLECTION, function(existingUser) {
+		}, config.userCollection, function(existingUser) {
 			if (existingUser) {
-				var imageUrl = '/images/' + existingUser.avatar;
-				var user = userModel(existingUser.firstName, existingUser.lastName, imageUrl, existingUser.uid, {
-					sosControlLocation: existingUser.settings.sosControlLocation,
-					viewType: existingUser.settings.viewType,
-					mapZoomLevel: existingUser.settings.mapZoomLevel
-				})
-				next(loginResponse(true, user));
+				next(loginResponse(true, existingUser));
 			}
 			else {
 				next(loginResponse(false, null, 'sorry, could not find this user'));
@@ -107,17 +90,11 @@ module.exports = {
 		});
 	},
 	getUserById: function(userId, next) {
-		var existingUser = mongoConnector.find({
-			uid: userId
-		}, USERS_COLLECTION, function(existingUser) {
+		mongoConnector.find({
+			userId: userId
+		}, config.userCollection, function(existingUser) {
 			if (existingUser) {
-				var imageUrl = existingUser.avatar;
-				var user = userModel(existingUser.firstName, existingUser.lastName, imageUrl, existingUser.uid, {
-					sosControlLocation: existingUser.settings.sosControlLocation,
-					viewType: existingUser.settings.viewType,
-					mapZoomLevel: existingUser.settings.mapZoomLevel
-				})
-				next(user);
+				next(existingUser);
 			}
 			else {
 				next();
@@ -128,14 +105,14 @@ module.exports = {
 		});
 	},
 	saveUserSettings: function(userId, settings, next) {
-		var existingUser = mongoConnector.find({
+		mongoConnector.find({
 			uid: userId
-		}, USERS_COLLECTION, function(existingUser) {
+		}, config.userCollection, function(existingUser) {
 			if (existingUser) {
 				existingUser.settings = settings;
 				mongoConnector.edit({
 					uid: userId
-				}, existingUser, USERS_COLLECTION, function(response) {
+				}, existingUser, config.userCollection, function(response) {
 					next(jsonSuccess());
 				}, function(err) {
 					console.log(err);
@@ -148,6 +125,17 @@ module.exports = {
 		}, function(err) {
 			console.log(err);
 			throw "an error occured saving settings for user [id=" + userId + "]";
+		});
+	},
+	setUserLoginData: function(userId, currentLocation, registrationId, next) {
+		mongoConnector.edit({
+			uid: userId
+		}, {
+			currentLocation: currentLocation,
+			registrationId: registrationId
+		}, config.userCollection, next, function(err) {
+			console.log(err);
+			throw "an error occured saving post login data for user [id=" + userId + "]";
 		});
 	}
 }

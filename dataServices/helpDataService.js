@@ -1,16 +1,14 @@
 const jsonSuccess = require('../models/jsonSuccess');
 const jsonFailure = require('../models/jsonFailure');
 const userDataService = require('./usersDataService');
-const Guid = require('guid');
 const mongoConnector = require("./mongoConnector");
-const CASES_COLLECTION = "cases";
-const CHAT_COLLECTION = "chat";
+const config = require("./config/collections");
 
 module.exports = {
     addHelpCase(caseId, userId, title, description, lat, lng, images, next) {
         userDataService.getUserById(userId, function(userData) {
             if (userData) {
-
+                var created = new Date();
                 mongoConnector.add({
                     userImage: userData.imageUrl,
                     location: {
@@ -21,21 +19,28 @@ module.exports = {
                     description: description,
                     id: caseId,
                     userId: userId,
-                    images: images
-                }, CASES_COLLECTION, function(result) {
+                    images: images,
+                    isActive: true,
+                    created: created,
+                }, config.casesCollection, function(result) {
                     next(jsonSuccess());
                 }, function(err) {
                     console.log(err);
                     throw "an error occured adding case data to db";
                 });
             }
-
-            next(jsonFailure("could not find user with id " + userId));
+            else {
+                next(jsonFailure("could not find user with id " + userId));
+            }
         });
     },
-    getHelpCases(location, next) {
-        mongoConnector.findAll(CASES_COLLECTION,
+    getHelpCases(location, userId, next) {
+        mongoConnector.findAll(config.casesCollection,
             function(data) {
+                data = data || [];
+                data = data.filter(function(d) {
+                    return d.userId !== userId;
+                });
                 next(data || []);
             },
             function(error) {
@@ -44,9 +49,9 @@ module.exports = {
             });
     },
     getHelpCaseById(id, next) {
-        var existingCase = mongoConnector.find({
+        mongoConnector.find({
             id: id
-        }, CASES_COLLECTION, function(existingCase) {
+        }, config.casesCollection, function(existingCase) {
             if (existingCase) {
                 next(jsonSuccess({
                     helpCase: existingCase
@@ -66,11 +71,10 @@ module.exports = {
         userDataService.getUserById(sender, function(user) {
             mongoConnector.add({
                 caseId: caseId,
-                sender: user.fullName,
                 senderId: user.userId,
                 text: text,
                 timestamp: timestamp
-            }, CHAT_COLLECTION, function(result) {
+            }, config.chatCollection, function(result) {
                 next(result);
             }, function(error) {
                 console.log(error);
@@ -82,7 +86,7 @@ module.exports = {
         mongoConnector.search({
             caseId: id,
             timestamp: { $gt: lastQuery }
-        }, CHAT_COLLECTION, function(messages) {
+        }, config.chatCollection, function(messages) {
             next(messages);
         }, function(error) {
             console.log(error);

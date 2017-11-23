@@ -1,5 +1,6 @@
-module.exports = function(userData){
+module.exports = function(userData, token) {
 	return {
-		userData: userData
+		userData: userData,
+		token: token
 	};
 }

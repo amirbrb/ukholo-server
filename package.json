@@ -13,11 +13,13 @@
     "body-parser": "^1.18.2",
     "express": "^4.16.2",
     "guid": "0.0.12",
+    "jsonwebtoken": "^8.1.0",
+    "moment": "*",
+    "mongodb": "*",
     "multer": "^1.3.0",
     "node-dev": "^3.1.3",
-    "nodemon": "*",
     "node-gcm": "*",
-    "mongodb": "*",
-    "moment": "*"
+    "nodemon": "*",
+    "cookie-parser": "^1.4.3"
   }
 }

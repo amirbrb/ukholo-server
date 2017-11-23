@@ -6,6 +6,9 @@ const moment = require('moment')
 const jsonSuccess = require('../models/jsonSuccess');
 const jsonFailure = require('../models/jsonFailure');
 const helpDataService = require('../dataServices/helpDataService');
+const app = express();
+const jwt = require('jsonwebtoken');
+const config = require('../config.dev');
 
 
 var storage = multer.diskStorage({
@@ -21,67 +24,98 @@ var storage = multer.diskStorage({
 
 var upload = multer({ storage: storage }).any();
 
-router.use(function(req, res, next) {
-    next();
-});
+var validateToken = function(req, res, next) {
+    var token = req.query.mb_token || req.body.mb_token || req.headers.mb_token;
+    if (token) {
+        jwt.verify(token, config.tokenSecret, function(err, decoded) {
+            if (err) {
+                return res.json({ success: false, message: 'Failed to authenticate token.' });
+            }
+            else {
+                next();
+            }
+        });
+    }
+    else {
+        return res.status(403).send({
+            success: false,
+            message: 'No token provided.'
+        });
+
+    }
+}
 
 router.get('/', function(req, res) {
-    var location = req.body.locaation;
-    helpDataService.getHelpCases(location, function(cases) {
-        res.send(cases);
+    validateToken(req, res, function() {
+        var location = req.query.location;
+        var userId = req.query.userId;
+        helpDataService.getHelpCases(location, userId, function(cases) {
+            res.send(cases);
+        });
     });
 });
 
 router.post('/text', function(req, res) {
-    req.helpId = Guid.create();
-    upload(req, res, function(err) {
-        var images = req.files.map(img => {
-            return img.filename
-        });
-        helpDataService.addHelpCase(req.helpId.value,
-            req.body.userId,
-            req.body.title,
-            req.body.description,
-            req.body.lat,
-            req.body.lng,
-            images,
-            function(uploadResult) {
-                res.send(uploadResult);
-            }
-        );
-    })
+    validateToken(req, res, function() {
+        req.helpId = Guid.create();
+        upload(req, res, function(err) {
+            var images = req.files.map(img => {
+                return img.filename
+            });
+            helpDataService.addHelpCase(req.helpId.value,
+                req.body.userId,
+                req.body.title,
+                req.body.description,
+                req.body.lat,
+                req.body.lng,
+                images,
+                function(uploadResult) {
+                    res.send(uploadResult);
+                }
+            );
+        })
+    });
 });
 
 router.get('/:id/', function(req, res) {
-    var id = req.params.id;
-    helpDataService.getHelpCaseById(id, function(caseResult) {
-        res.send(caseResult);
+    validateToken(req, res, function() {
+        var id = req.params.id;
+        helpDataService.getHelpCaseById(id, function(caseResult) {
+            res.send(caseResult);
+        });
     });
 });
 
 router.post('/message/', function(req, res) {
-    var caseId = req.body.caseId;
-    var text = req.body.text;
-    var sender = req.body.userId;
-    var timestamp = moment().format();
+    validateToken(req, res, function() {
+        var caseId = req.body.caseId;
+        var text = req.body.text;
+        var sender = req.body.userId;
+        var timestamp = moment().format();
 
-    helpDataService.addCaseMessage(caseId, text, sender, timestamp,
-        function(response) {
-            res.send(response)
-        }
-    );
+        helpDataService.addCaseMessage(caseId, text, sender, timestamp,
+            function(response) {
+                res.send(response)
+            }
+        );
+    });
 })
 
 router.get('/messages/:id/', function(req, res) {
-    var id = req.params.id;
-    var lastQuery = req.query.q;
-    helpDataService.getCaseMessages(id, lastQuery, function(messages) {
-        messages = messages || [];
-        var maxTimestamp = moment.max(messages.map(function(message) { return moment(message.timestamp); }));
-        res.send({
-            messages: messages,
-            lastTimestamp: maxTimestamp
-        })
+    validateToken(req, res, function() {
+        var id = req.params.id;
+        var lastQuery = req.query.q;
+        helpDataService.getCaseMessages(id, lastQuery, function(messages) {
+            messages = messages || [];
+            var maxTimestamp = lastQuery;
+            if (messages.length > 0) {
+                maxTimestamp = moment.max(messages.map(function(message) { return moment(message.timestamp); }));
+            }
+            res.send({
+                messages: messages,
+                lastTimestamp: maxTimestamp
+            })
+        });
     });
 })
 
