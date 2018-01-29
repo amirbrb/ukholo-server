@@ -9,7 +9,7 @@ const helpDataService = require('../dataServices/helpDataService');
 const app = express();
 const jwt = require('jsonwebtoken');
 const config = require('../config.dev');
-
+const imageServices = require('../dataServices/imagesService');
 
 var storage = multer.diskStorage({
     destination: function(req, file, callback) {
@@ -50,7 +50,7 @@ router.get('/', function(req, res) {
         var location = req.query.location;
         var userId = req.query.userId;
         helpDataService.getHelpCases(location, userId, function(cases) {
-            res.send(cases);
+            res.send(jsonSuccess(cases));
         });
     });
 });
@@ -60,6 +60,13 @@ router.post('/text', function(req, res) {
         req.helpId = Guid.create();
         upload(req, res, function(err) {
             var images = req.files.map(img => {
+                imageServices.uploadImage(img,
+                    function(response) {
+
+                    },
+                    function(error) {
+
+                    });
                 return img.filename
             });
             helpDataService.addHelpCase(req.helpId.value,
@@ -70,7 +77,7 @@ router.post('/text', function(req, res) {
                 req.body.lng,
                 images,
                 function(uploadResult) {
-                    res.send(uploadResult);
+                    res.send(jsonSuccess(uploadResult));
                 }
             );
         })
@@ -81,7 +88,7 @@ router.get('/:id/', function(req, res) {
     validateToken(req, res, function() {
         var id = req.params.id;
         helpDataService.getHelpCaseById(id, function(caseResult) {
-            res.send(caseResult);
+            res.send(jsonSuccess(caseResult));
         });
     });
 });
@@ -95,7 +102,7 @@ router.post('/message/', function(req, res) {
 
         helpDataService.addCaseMessage(caseId, text, sender, timestamp,
             function(response) {
-                res.send(response)
+                res.send(jsonSuccess(response))
             }
         );
     });
@@ -111,10 +118,10 @@ router.get('/messages/:id/', function(req, res) {
             if (messages.length > 0) {
                 maxTimestamp = moment.max(messages.map(function(message) { return moment(message.timestamp); }));
             }
-            res.send({
+            res.send(jsonSuccess({
                 messages: messages,
                 lastTimestamp: maxTimestamp
-            })
+            }))
         });
     });
 })

@@ -1,8 +1,7 @@
-const jsonSuccess = require('../models/jsonSuccess');
-const jsonFailure = require('../models/jsonFailure');
 const userDataService = require('./usersDataService');
 const mongoConnector = require("./mongoConnector");
 const config = require("./config/collections");
+const notifier = require("./notifierService")
 
 module.exports = {
     addHelpCase(caseId, userId, title, description, lat, lng, images, next) {
@@ -23,29 +22,27 @@ module.exports = {
                     isActive: true,
                     created: created,
                 }, config.casesCollection, function(result) {
-                    next(jsonSuccess());
+                    next(result);
                 }, function(err) {
                     console.log(err);
-                    throw "an error occured adding case data to db";
+                    throw err;
                 });
             }
             else {
-                next(jsonFailure("could not find user with id " + userId));
+                next("could not find user with id " + userId);
             }
         });
     },
     getHelpCases(location, userId, next) {
-        mongoConnector.findAll(config.casesCollection,
+        mongoConnector.search({
+                userId: { $ne: userId }
+            }, config.casesCollection,
             function(data) {
-                data = data || [];
-                data = data.filter(function(d) {
-                    return d.userId !== userId;
-                });
-                next(data || []);
+                next(data);
             },
             function(error) {
                 console.log(error);
-                throw "an error occured querying case data";
+                throw error;
             });
     },
     getHelpCaseById(id, next) {
@@ -53,32 +50,54 @@ module.exports = {
             id: id
         }, config.casesCollection, function(existingCase) {
             if (existingCase) {
-                next(jsonSuccess({
-                    helpCase: existingCase
-                }));
+                mongoConnector.search({
+                    caseId: id,
+                }, config.chatCollection, function(messages) {
+                    existingCase.messages = messages;
+                    userDataService.getUserById(existingCase.userId, function(user) {
+                        existingCase.user = user;
+                        next(existingCase);
+                    });
+                }, function(error) {
+                    console.log(error);
+                    throw error;
+                })
             }
             else {
-                next(jsonFailure({
+                next({
                     message: 'could not fing case with id ' + id
-                }));
+                });
             }
         }, function(error) {
             console.log(error);
-            throw "an error occured querying case data";
+            throw error;
+        });
+    },
+    getHelpCasesByUserId(userId, next) {
+        mongoConnector.search({
+            userId: userId
+        }, config.casesCollection, function(existingCase) {
+            next(existingCase);
+        }, function(error) {
+            console.log(error);
+            throw error;
         });
     },
     addCaseMessage(caseId, text, sender, timestamp, next) {
-        userDataService.getUserById(sender, function(user) {
+        this.getHelpCaseById(caseId, function(caseData) {
             mongoConnector.add({
                 caseId: caseId,
-                senderId: user.userId,
+                senderId: sender,
                 text: text,
                 timestamp: timestamp
             }, config.chatCollection, function(result) {
-                next(result);
+                userDataService.getUserById(caseData.userId, function(user) {
+                    notifier.notifyCaseMessage(user.registrationId, caseData);
+                    next(result);
+                })
             }, function(error) {
                 console.log(error);
-                throw "an error occured adding case chat message";
+                throw error;
             });
         });
     },
@@ -90,7 +109,7 @@ module.exports = {
             next(messages);
         }, function(error) {
             console.log(error);
-            throw "an error occured querying case messages";
+            throw error;
         });
     }
 }

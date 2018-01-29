@@ -2,6 +2,7 @@ const express = require('express')
 const router = express.Router()
 const multer = require('multer')
 const usersDataService = require('../dataServices/usersDataService');
+const imageServices = require('../dataServices/imagesService');
 const startupData = require('../models/startupData');
 const jsonSuccess = require('../models/jsonSuccess');
 const jsonFailure = require('../models/jsonFailure');
@@ -39,6 +40,13 @@ router.post('/register', function(req, res) {
     req.registrationKey = Guid.create();
     upload(req, res, function(err) {
         var userAvatar = req.files.map(img => {
+            imageServices.uploadImage(img,
+                function(response) {
+
+                },
+                function(error) {
+
+                });
             return img.filename;
         })[0];
 
@@ -47,7 +55,10 @@ router.post('/register', function(req, res) {
         var name = req.body.name;
         var phoneNumber = req.body.phoneNumber;
         var registrationId = req.body.gcmRegistrationId;
-        var location = JSON.parse(req.body.currentLocation);
+        var location = {
+            lat: req.body.lat,
+            lng: req.body.lng
+        }
 
         usersDataService.register(mail,
             password,
@@ -73,7 +84,10 @@ router.post('/login', function(req, res) {
     var mail = req.body.mail;
     var password = req.body.password;
     var registrationId = req.body.gcmRegistrationId;
-    var currentLocation = req.body.currentLocation;
+    var currentLocation = {
+        lat: req.body.lat,
+        lng: req.body.lng,
+    };
 
     usersDataService.login(mail,
         password,
@@ -93,7 +107,10 @@ router.post('/login', function(req, res) {
 router.post('/relogin', function(req, res) {
     var mail = req.body.mail;
     var registrationId = req.body.gcmRegistrationId;
-    var currentLocation = req.body.currentLocation;
+    var currentLocation = {
+        lat: req.body.lat,
+        lng: req.body.lng,
+    };
 
     usersDataService.getUserByName(mail, function(loginResponse) {
         if (loginResponse.isSuccess) {

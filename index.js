@@ -3,6 +3,7 @@ const app = express();
 const bodyParser = require('body-parser')
 const jwt = require('jsonwebtoken');
 const config = require('./config.dev');
+const helmet = require('helmet');
 
 var port = process.env.PORT || 3000;
 
@@ -30,6 +31,7 @@ app.use(function(req, res, next) {
     // Pass to next layer of middleware
     next();
 });
+app.use(helmet());
 
 //routes
 const login = require('./routes/login');

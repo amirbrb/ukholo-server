@@ -6,13 +6,16 @@ const Guid = require('guid')
 const fs = require('fs');
 const path = require('path')
 const usersDataService = require('../dataServices/usersDataService');
+const helpDataService = require('../dataServices/helpDataService');
 const startupData = require('../models/startupData');
 const jsonSuccess = require('../models/jsonSuccess');
 const jsonFailure = require('../models/jsonFailure');
+const imageServices = require('../dataServices/imagesService');
 const jwt = require('jsonwebtoken');
 const config = require('../config.dev');
 
-router.use(function(req, res, next) {
+
+var validateToken = function(req, res, next) {
 	var token = req.query.mb_token || req.body.mb_token || req.headers.mb_token;
 	if (token) {
 		jwt.verify(token, config.tokenSecret, function(err, decoded) {
@@ -29,16 +32,16 @@ router.use(function(req, res, next) {
 			success: false,
 			message: 'No token provided.'
 		});
+
 	}
-});
+}
 
 var storage = multer.diskStorage({
 	destination: function(req, file, callback) {
 		callback(null, 'img/');
 	},
 	filename: function(req, file, callback) {
-		var key = req.registrationKey.value
-		var fileName = key + '_' + file.originalname;
+		var fileName = req.uploadKey.value + file.originalname;
 		callback(null, fileName);
 	}
 });
@@ -46,42 +49,78 @@ var storage = multer.diskStorage({
 var upload = multer({ storage: storage }).any();
 
 router.get('/details/:id', function(req, res) {
-	var userId = req.params.id;
-	usersDataService.getUserById(userId, function(response) {
-		if (response) {
-			res.send(response);
-		}
-		else {
-			res.send('');
-		}
-	});
+	validateToken(req, res, function() {
+		var userId = req.params.id;
+		usersDataService.getUserById(userId, function(response) {
+			if (response) {
+				delete response.password;
+				res.send(response);
+			}
+			else {
+				res.send('');
+			}
+		});
+	})
 });
 
-router.post('/settings', function(req, res) {
+router.get('/events/:id', function(req, res) {
+	validateToken(req, res, function() {
+		var userId = req.params.id;
+		helpDataService.getHelpCasesByUserId(userId, function(response) {
+			if (response) {
+				res.send(jsonSuccess(response));
+			}
+			else {
+				res.send(jsonFailure());
+			}
+		});
+	})
+});
+
+router.post('/preferences', function(req, res) {
 	var userId = req.body.userId;
-	var settings = req.body.settings;
-	usersDataService.saveUserSettings(userId, settings, function(response) {
-		if (response.isSuccess) {
+	var userPreferences = JSON.parse(req.body.settings);
+	usersDataService.saveUserPreferences(userId, userPreferences, function(response) {
+		if (response) {
 			res.send(jsonSuccess());
 		}
 		else {
 			res.send(jsonFailure());
 		}
 	});
-});
+})
 
-router.post('/prefferences', function(req, res) {
-	var userId = req.body.userId;
-	usersDataService.getUserPrefferences(userId, function(response) {
+router.post('/settings', function(req, res) {
+	validateToken(req, res, function() {
+		req.uploadKey = Guid.create();
+		upload(req, res, function(err) {
+			var userId = req.body.userId;
+			var userData = JSON.parse(req.body.settings);
+			var avatar = null;
+			if (req.files && req.files.length > 0) {
+				var userAvatar = req.files.map(img => {
+					imageServices.uploadImage(img,
+						function(response) {
 
-	});
-});
+						},
+						function(error) {
 
-router.put('/prefferences', function(req, res) {
-	var userId = req.body.userId;
-	var prefferences = req.body.prefferences;
-	usersDataService.saveUserPrefferences(userId, prefferences, function(response) {
+						});
+					return img.filename
+				})[0];
 
+				userData.avatar = userAvatar;
+			}
+
+			usersDataService.saveUserSettings(userId, userData, function(response) {
+				if (response.isSuccess) {
+					res.send(jsonSuccess());
+				}
+				else {
+					res.send(jsonFailure());
+				}
+			});
+		});
 	});
 });
 

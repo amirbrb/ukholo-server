@@ -1,5 +1,9 @@
 const MongoClient = require('mongodb').MongoClient;
 const ConnectionString = 'mongodb://amirbrb:gfYsrN2Day@ds145039.mlab.com:45039/mustb';
+const fs = require('fs-extra');
+const Guid = require("guid");
+const config = require("./config/collections");
+
 
 var connect = function(db) {
     return new Promise(function(resolve, reject) {
@@ -84,6 +88,49 @@ module.exports = {
                 }
             });
         });
-    }
+    },
+    uploadImage: function(file, next, error) {
+        connect().then((db) => {
+            var newImg = fs.readFileSync(file.path);
+            var encImg = newImg.toString('base64');
+            var fileName
+            var newItem = {
+                contentType: file.mimetype,
+                size: file.size,
+                img: encImg,
+                imageId: file.filename
+            };
 
+            db.collection(config.imagesCollection)
+                .insertOne(newItem)
+                .then(result => {
+                    fs.remove(file.path, function(err) {
+                        if (err) {
+                            error(err)
+                        }
+                        else {
+                            db.close();
+                            next(result);
+                        }
+                    })
+                })
+                .catch(err => {
+                    error(err);
+                });
+        });
+    },
+    getImage: function(imageId, next, error) {
+        connect().then((db) => {
+            db.collection(config.imagesCollection)
+                .findOne({
+                    imageId: imageId
+                }).then(result => {
+                    db.close();
+                    next(result);
+                })
+                .catch(err => {
+                    error(err);
+                });
+        });
+    }
 }

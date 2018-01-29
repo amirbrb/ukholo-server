@@ -1,16 +1,11 @@
-const jsonSuccess = require('../models/jsonSuccess');
-const jsonFailure = require('../models/jsonFailure');
 const Guid = require("guid");
 const registrationResponse = require('../models/registration/registrationResponse');
 const loginResponse = require('../models/registration/loginResponse');
 const mongoConnector = require("./mongoConnector");
 const config = require("./config/collections");
-
-const loginType = {
-	mail: 1,
-	google: 2,
-	facebook: 3
-};
+const unitTypes = require("../enumerations/unitType")
+const extend = require("extend");
+const cacheServices = require("./cacheServices");
 
 module.exports = {
 	register: function(mail, password, name, phoneNumber, avatar, next) {
@@ -35,13 +30,17 @@ module.exports = {
 			avatar: avatar,
 			currentLocation: {},
 			settings: {
-				alerts: {
-					distance: 10000
+				notificationSettings: {
+					alertDistance: 5,
+					showMeOnMap: false,
+					onlyFriendsAlert: false
 				},
+				distanceUnitsType: 1,
 				sosControlLocation: {},
 				viewType: 1,
 				mapZoomLevel: 14
 			},
+			unitType: unitTypes.metric,
 			description: '',
 			gender: 3
 		};
@@ -50,7 +49,7 @@ module.exports = {
 			next(registrationResponse(true, user)),
 			function(err) {
 				console.log(err);
-				throw "an error occured registering user [mail=" + mail + "]";
+				throw err;
 			}
 		);
 	},
@@ -71,7 +70,7 @@ module.exports = {
 			}
 		}, function(err) {
 			console.log(err);
-			throw "an error occured logging user [mail=" + mail + "]";
+			throw err;
 		});
 	},
 	getUserByName: function(mail, next) {
@@ -86,56 +85,76 @@ module.exports = {
 			}
 		}, function(err) {
 			console.log(err);
-			throw "an error occured getting user by name [mail=" + mail + "]";
+			throw err;
 		});
 	},
 	getUserById: function(userId, next) {
 		mongoConnector.find({
 			userId: userId
 		}, config.userCollection, function(existingUser) {
-			if (existingUser) {
-				next(existingUser);
-			}
-			else {
-				next();
-			}
+			next(existingUser);
 		}, function(err) {
 			console.log(err);
-			throw "an error occured getting user by id [id=" + userId + "]";
+			throw err;
 		});
 	},
-	saveUserSettings: function(userId, settings, next) {
+	saveUserPreferences: function(userId, preferences, next) {
 		mongoConnector.find({
-			uid: userId
+			userId: userId
 		}, config.userCollection, function(existingUser) {
 			if (existingUser) {
-				existingUser.settings = settings;
+				existingUser.settings.sosControlLocation = preferences.sosControlLocation;
+				existingUser.settings.viewType = preferences.viewType;
+				existingUser.settings.mapZoomLevel = preferences.mapZoomLevel;
 				mongoConnector.edit({
-					uid: userId
+					userId: userId
 				}, existingUser, config.userCollection, function(response) {
-					next(jsonSuccess());
+					next(response);
 				}, function(err) {
 					console.log(err);
 					throw "an error occured updating user settings by id [id=" + userId + "]";
 				});
 			}
 			else {
-				next(jsonFailure());
+				next();
 			}
 		}, function(err) {
 			console.log(err);
-			throw "an error occured saving settings for user [id=" + userId + "]";
+			throw err;
+		});
+	},
+	saveUserSettings: function(userId, settings, next) {
+		mongoConnector.find({
+			userId: userId
+		}, config.userCollection, function(existingUser) {
+			if (existingUser) {
+				existingUser = extend(existingUser, settings);
+				mongoConnector.edit({
+					userId: userId
+				}, existingUser, config.userCollection, function(response) {
+					next();
+				}, function(err) {
+					console.log(err);
+					throw err;
+				});
+			}
+			else {
+				next();
+			}
+		}, function(err) {
+			console.log(err);
+			throw err;
 		});
 	},
 	setUserLoginData: function(userId, currentLocation, registrationId, next) {
 		mongoConnector.edit({
-			uid: userId
+			userId: userId
 		}, {
 			currentLocation: currentLocation,
 			registrationId: registrationId
 		}, config.userCollection, next, function(err) {
 			console.log(err);
-			throw "an error occured saving post login data for user [id=" + userId + "]";
+			throw err;
 		});
 	}
 }
