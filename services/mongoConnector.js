@@ -1,13 +1,15 @@
 const MongoClient = require('mongodb').MongoClient;
-const ConnectionString = 'mongodb://amirbrb:gfYsrN2Day@ds145039.mlab.com:45039/mustb';
 const fs = require('fs-extra');
 const Guid = require("guid");
-const config = require("./config/collections");
+const config = require("../config/collections");
+const applicationArguments = require('yargs').argv;
+
+const applicationConfig = require("../config/application." + applicationArguments.ENV)
 
 
 var connect = function(db) {
     return new Promise(function(resolve, reject) {
-        MongoClient.connect(ConnectionString, (err, db) => {
+        MongoClient.connect(applicationConfig.mongoConnection, (err, db) => {
             if (err) {
                 reject(err);
             }

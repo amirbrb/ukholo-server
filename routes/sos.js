@@ -8,7 +8,6 @@ const jwt = require('jsonwebtoken');
 const jsonSuccess = require('../models/jsonSuccess');
 const jsonFailure = require('../models/jsonFailure');
 const helpDataService = require('../dataServices/helpDataService');
-const config = require('../config.dev');
 const imageServices = require('../services/imagesService');
 
 var storage = multer.diskStorage({
@@ -27,7 +26,7 @@ var upload = multer({ storage: storage }).any();
 var validateToken = function(req, res, next) {
     var token = req.query.mb_token || req.body.mb_token || req.headers.mb_token;
     if (token) {
-        jwt.verify(token, config.tokenSecret, function(err, decoded) {
+        jwt.verify(token, app.get('tokenSecret'), function(err, decoded) {
             if (err) {
                 return res.json({ success: false, message: 'Failed to authenticate token.' });
             }

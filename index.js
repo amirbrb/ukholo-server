@@ -2,9 +2,14 @@ const express = require('express')
 const app = express();
 const bodyParser = require('body-parser')
 const jwt = require('jsonwebtoken');
-const config = require('./config.dev');
 const helmet = require('helmet');
-var port = process.env.PORT || 3000;
+const applicationArguments = require('yargs').argv;
+const configuration = require('./config/application.' + applicationArguments.ENV);
+
+var port = process.env.PORT || applicationArguments.PORT;
+
+app.set('tokenSecret', configuration.tokenSecret);
+app.set('ENV', applicationArguments.ENV);
 
 //body parser
 app.use(bodyParser.urlencoded({ extended: false }));
@@ -44,6 +49,10 @@ app.use('/images', images);
 
 const sos = require('./routes/sos');
 app.use('/sos', sos);
+
+app.get('/', function(req, res){
+    res.send('Hi!');
+});
 
 app.listen(port, function() {
     console.log('MustB server started at port', port)
