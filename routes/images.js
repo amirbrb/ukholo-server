@@ -4,7 +4,7 @@ const path = require('path');
 const jsonSuccess = require('../models/jsonSuccess');
 const jsonFailure = require('../models/jsonFailure');
 const usersDataService = require('../dataServices/usersDataService');
-const imagesService = require('../dataServices/imagesService');
+const imagesService = require('../services/imagesService');
 
 router.use(function(req, res, next) {
 	next();
@@ -23,9 +23,12 @@ var showImage = function(result, res) {
 
 router.get('/:id', function(req, res) {
 	var imageId = req.params.id;
-	imagesService.getImage(imageId, function(result) {
-		showImage(result, res);
-	})
+	imagesService.getImage(imageId)
+		.then(result => {
+			showImage(result, res);
+		}).catch(err => {
+			throw err;
+		});
 });
 
 router.get('/static/:id', function(req, res) {
@@ -43,17 +46,24 @@ router.get('/static/:id', function(req, res) {
 
 router.get('/avatar/:id', function(req, res) {
 	var userId = req.params.id;
-	usersDataService.getUserById(userId, function(response) {
-		if (response) {
-			var imageId = response.avatar;
-			imagesService.getImage(imageId, function(result) {
-				showImage(result, res);
-			})
-		}
-		else {
-			res.send('');
-		}
-	});
+	usersDataService.getUserById(userId)
+		.then(result => {
+			if (result) {
+				var imageId = result.avatar;
+				imagesService.getImage(imageId)
+					.then(result => {
+						showImage(result, res);
+					}).catch(err => {
+						throw err;
+					});
+			}
+			else {
+				res.send('');
+			}
+		})
+		.catch(err => {
+			throw err;
+		});;
 });
 
 module.exports = router

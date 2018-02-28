@@ -1,11 +1,10 @@
 const Guid = require("guid");
 const registrationResponse = require('../models/registration/registrationResponse');
 const loginResponse = require('../models/registration/loginResponse');
-const mongoConnector = require("./mongoConnector");
-const config = require("./config/collections");
+const mongoConnector = require("../services/mongoConnector");
+const config = require("../config/collections");
 const unitTypes = require("../enumerations/unitType")
 const extend = require("extend");
-const cacheServices = require("./cacheServices");
 
 module.exports = {
 	register: function(mail, password, name, phoneNumber, avatar, next) {
@@ -88,31 +87,32 @@ module.exports = {
 			throw err;
 		});
 	},
-	getUserById: function(userId, next) {
-		mongoConnector.find({
-			userId: userId
-		}, config.userCollection, function(existingUser) {
-			next(existingUser);
-		}, function(err) {
-			console.log(err);
-			throw err;
+	getUserById: function(userId) {
+		return new Promise(function(resolve, reject) {
+			mongoConnector.find({
+					userId: userId
+				}, config.userCollection)
+				.then(result => {
+					resolve(result);
+				})
+				.catch(err => {
+					reject(err);
+				})
 		});
 	},
-	saveUserPreferences: function(userId, preferences, next) {
+	saveUserProfile: function(userId, profile, next) {
 		mongoConnector.find({
 			userId: userId
 		}, config.userCollection, function(existingUser) {
 			if (existingUser) {
-				existingUser.settings.sosControlLocation = preferences.sosControlLocation;
-				existingUser.settings.viewType = preferences.viewType;
-				existingUser.settings.mapZoomLevel = preferences.mapZoomLevel;
+				existingUser = extend(existingUser, profile);
 				mongoConnector.edit({
 					userId: userId
 				}, existingUser, config.userCollection, function(response) {
-					next(response);
+					next();
 				}, function(err) {
 					console.log(err);
-					throw "an error occured updating user settings by id [id=" + userId + "]";
+					throw err;
 				});
 			}
 			else {
@@ -123,12 +123,12 @@ module.exports = {
 			throw err;
 		});
 	},
-	saveUserSettings: function(userId, settings, next) {
+	saveUserTools: function(userId, tools, next) {
 		mongoConnector.find({
 			userId: userId
 		}, config.userCollection, function(existingUser) {
 			if (existingUser) {
-				existingUser = extend(existingUser, settings);
+				existingUser.tools = tools;
 				mongoConnector.edit({
 					userId: userId
 				}, existingUser, config.userCollection, function(response) {
@@ -156,5 +156,33 @@ module.exports = {
 			console.log(err);
 			throw err;
 		});
+	},
+	getUsersCloseBy: function(lat, lng, userId, next) {
+		var self = this;
+		mongoConnector.search({
+			$where: function() {
+				return this.userId != userId &&
+					self.farwaway(this.currentLocation.lat, this.currentLocation.lng, lat, lng) < 10;
+			}
+		}, config.userCollection, next, function(err) {
+			console.log(err);
+			throw err;
+		});
+	},
+	farwaway: function(lat, lng, lat2, lng2) {
+		var R = 6371; // Radius of the earth in km
+		var dLat = this.deg2rad(lat2 - lat); // deg2rad below
+		var dLon = this.deg2rad(lng2 - lng);
+		var a =
+			Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+			Math.cos(this.deg2rad(lat)) * Math.cos(this.deg2rad(lat2)) *
+			Math.sin(dLon / 2) * Math.sin(dLon / 2);
+		var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+		var d = R * c; // Distance in km
+
+		return Math.round(d, 2);
+	},
+	deg2rad: function(deg) {
+		return deg * (Math.PI / 180)
 	}
 }

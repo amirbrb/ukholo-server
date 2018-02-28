@@ -1,18 +1,14 @@
 const express = require('express')
 const router = express.Router()
 const multer = require('multer')
+const Guid = require('guid')
+const jwt = require('jsonwebtoken');
 const usersDataService = require('../dataServices/usersDataService');
-const imageServices = require('../dataServices/imagesService');
+const imageServices = require('../services/imagesService');
 const startupData = require('../models/startupData');
 const jsonSuccess = require('../models/jsonSuccess');
 const jsonFailure = require('../models/jsonFailure');
-const Guid = require('guid')
 const config = require('../config.dev');
-const jwt = require('jsonwebtoken');
-
-router.use(function(req, res, next) {
-    next();
-});
 
 var storage = multer.diskStorage({
     destination: function(req, file, callback) {
@@ -40,14 +36,9 @@ router.post('/register', function(req, res) {
     req.registrationKey = Guid.create();
     upload(req, res, function(err) {
         var userAvatar = req.files.map(img => {
-            imageServices.uploadImage(img,
-                function(response) {
-
-                },
-                function(error) {
-
-                });
-            return img.filename;
+            imageServices.uploadImage(img).then(result => {
+                return img.filename;
+            });
         })[0];
 
         var mail = req.body.mail;

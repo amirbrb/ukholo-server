@@ -5,13 +5,13 @@ const app = express();
 const Guid = require('guid')
 const fs = require('fs');
 const path = require('path')
+const jwt = require('jsonwebtoken');
 const usersDataService = require('../dataServices/usersDataService');
-const helpDataService = require('../dataServices/helpDataService');
+const sosDataService = require('../dataServices/helpDataService');
 const startupData = require('../models/startupData');
 const jsonSuccess = require('../models/jsonSuccess');
 const jsonFailure = require('../models/jsonFailure');
 const imageServices = require('../dataServices/imagesService');
-const jwt = require('jsonwebtoken');
 const config = require('../config.dev');
 
 
@@ -63,39 +63,21 @@ router.get('/details/:id', function(req, res) {
 	})
 });
 
-router.get('/events/:id', function(req, res) {
+router.get('/cases/:id', function(req, res) {
 	validateToken(req, res, function() {
 		var userId = req.params.id;
-		helpDataService.getHelpCasesByUserId(userId, function(response) {
-			if (response) {
-				res.send(jsonSuccess(response));
-			}
-			else {
-				res.send(jsonFailure());
-			}
-		});
+		sosDataService.getHelpCasesByUserId(userId, function(cases) {
+			res.send(cases);
+		})
 	})
 });
 
-router.post('/preferences', function(req, res) {
-	var userId = req.body.userId;
-	var userPreferences = JSON.parse(req.body.settings);
-	usersDataService.saveUserPreferences(userId, userPreferences, function(response) {
-		if (response) {
-			res.send(jsonSuccess());
-		}
-		else {
-			res.send(jsonFailure());
-		}
-	});
-})
-
-router.post('/settings', function(req, res) {
+router.post('/settings/profile', function(req, res) {
 	validateToken(req, res, function() {
 		req.uploadKey = Guid.create();
 		upload(req, res, function(err) {
 			var userId = req.body.userId;
-			var userData = JSON.parse(req.body.settings);
+			var profileData = JSON.parse(req.body.settings);
 			var avatar = null;
 			if (req.files && req.files.length > 0) {
 				var userAvatar = req.files.map(img => {
@@ -109,10 +91,29 @@ router.post('/settings', function(req, res) {
 					return img.filename
 				})[0];
 
-				userData.avatar = userAvatar;
+				profileData.avatar = userAvatar;
 			}
 
-			usersDataService.saveUserSettings(userId, userData, function(response) {
+			usersDataService.saveUserProfile(userId, profileData, function(response) {
+				if (response.isSuccess) {
+					res.send(jsonSuccess());
+				}
+				else {
+					res.send(jsonFailure());
+				}
+			});
+		});
+	});
+});
+
+router.post('/settings/tools', function(req, res) {
+	validateToken(req, res, function() {
+		req.uploadKey = Guid.create();
+		upload(req, res, function(err) {
+			var userId = req.body.userId;
+			var selectedTools = req.body.selectedTools.split(',');
+			var avatar = null
+			usersDataService.saveUserTools(userId, selectedTools, function(response) {
 				if (response.isSuccess) {
 					res.send(jsonSuccess());
 				}

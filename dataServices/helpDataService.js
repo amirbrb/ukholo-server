@@ -1,14 +1,14 @@
 const userDataService = require('./usersDataService');
-const mongoConnector = require("./mongoConnector");
-const config = require("./config/collections");
-const notifier = require("./notifierService")
+const mongoConnector = require("../services/mongoConnector");
+const config = require("../config/collections");
+const notifier = require("../services/notifierService")
 
 module.exports = {
     addHelpCase(caseId, userId, title, description, lat, lng, images, next) {
         userDataService.getUserById(userId, function(userData) {
             if (userData) {
                 var created = new Date();
-                mongoConnector.add({
+                var eventData = {
                     userImage: userData.imageUrl,
                     location: {
                         lat: lat,
@@ -21,7 +21,14 @@ module.exports = {
                     images: images,
                     isActive: true,
                     created: created,
-                }, config.casesCollection, function(result) {
+                };
+                mongoConnector.add(eventData, config.casesCollection, function(result) {
+                    var closeByUsers = userDataService.getUsersCloseBy(lat, lng, userId, function(users) {
+                        var registrationIds = users.map(function(user) {
+                            return user.registrationId;
+                        });
+                        notifier.notifyEvent(registrationIds, eventData)
+                    });
                     next(result);
                 }, function(err) {
                     console.log(err);
@@ -92,7 +99,7 @@ module.exports = {
                 timestamp: timestamp
             }, config.chatCollection, function(result) {
                 userDataService.getUserById(caseData.userId, function(user) {
-                    notifier.notifyCaseMessage(user.registrationId, caseData);
+                    notifier.notifyEventMessage(user.registrationId, caseData);
                     next(result);
                 })
             }, function(error) {
