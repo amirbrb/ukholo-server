@@ -4,34 +4,32 @@ const loginResponse = require('../models/registration/loginResponse');
 const mongoConnector = require("../services/mongoConnector");
 const collections = require("../config/collections");
 const unitTypes = require("../enumerations/unitType")
+const imageTypes = require("../enumerations/imageType")
+const imagesService = require("../services/imagesService");
 const extend = require("extend");
 
 module.exports = {
-	register: function(mail, password, name, phoneNumber, avatar) {
-		return new Promise(function(resolve, reject){
+	register: function(mail, password, name, phoneNumber, key) {
+		return new Promise(function(resolve, reject) {
 			mongoConnector.find({
-				mail: mail
-			}, collections.userCollection)
-				.then(existingUser=> {
+					mail: mail
+				}, collections.userCollection)
+				.then(existingUser => {
 					if (existingUser) {
 						resolve(registrationResponse(false, null, "sorry, provided mail is used"));
-					}	
+					}
 				})
-				.catch(err=> {
+				.catch(err => {
 					reject(err);
 				});
 
-			avatar = avatar || 'avatar.png';
-
-			var guid = Guid.create();
 			var user = {
-				_id: guid.value,
-				userId: guid.value,
+				_id: key,
+				userId: key,
 				mail: mail,
 				password: password,
 				name: name,
 				phoneNumber: phoneNumber,
-				avatar: avatar,
 				currentLocation: {},
 				settings: {
 					notificationSettings: {
@@ -40,62 +38,67 @@ module.exports = {
 						onlyFriendsAlert: false
 					},
 					distanceUnitsType: 1,
-					sosControlLocation: {},
-					viewType: 1,
-					mapZoomLevel: 14
 				},
-				unitType: unitTypes.metric,
+				preferences: {
+					viewType: 1,
+					mapZoomLevel: 14,
+					unitType: unitTypes.metric,
+					sosControlLocation: {
+
+					},
+				},
 				description: '',
-				gender: 3
+				gender: 3,
+				tools: []
 			};
 			//insert user to db and return model
 			mongoConnector.add(user, collections.userCollection)
-				.then(()=>{
+				.then(() => {
 					resolve(registrationResponse(true, user));
 				})
-				.catch(err=> {
+				.catch(err => {
 					reject(err);
 				});
 		});
 	},
 	login: function(mail, password) {
-		return new Promise(function(resolve, reject){
+		return new Promise(function(resolve, reject) {
 			mongoConnector.find({
-				mail: mail
-			}, collections.userCollection)
-			.then(existingUser=> {
-				if (existingUser) {
-					if (existingUser.password !== password)
-						resolve(loginResponse(false, null, "sorry, password is incorrect"));
-					else {
-						resolve(loginResponse(true, existingUser));
+					mail: mail
+				}, collections.userCollection)
+				.then(existingUser => {
+					if (existingUser) {
+						if (existingUser.password !== password)
+							resolve(loginResponse(false, null, "sorry, password is incorrect"));
+						else {
+							resolve(loginResponse(true, existingUser));
+						}
 					}
-				}
-				else {
-					resolve(loginResponse(false, null, 'sorry, could not find this user'));
-				}
-			})
-			.catch(err=> {
-				reject(err);
-			});
+					else {
+						resolve(loginResponse(false, null, 'sorry, could not find this user'));
+					}
+				})
+				.catch(err => {
+					reject(err);
+				});
 		});
 	},
 	getUserByName: function(mail) {
-		return new Promise(function(resolve, reject){
+		return new Promise(function(resolve, reject) {
 			mongoConnector.find({
-				mail: mail
-			}, collections.userCollection)
-			.then(existingUser=> {
-				if (existingUser) {
-					resolve(loginResponse(true, existingUser));
-				}
-				else {
-					resolve(loginResponse(false, null, 'sorry, could not find this user'));
-				}
-			})
-			.catch(err=> {
-				reject(err);
-			});
+					mail: mail
+				}, collections.userCollection)
+				.then(existingUser => {
+					if (existingUser) {
+						resolve(loginResponse(true, existingUser));
+					}
+					else {
+						resolve(loginResponse(false, null, 'sorry, could not find this user'));
+					}
+				})
+				.catch(err => {
+					reject(err);
+				});
 		});
 	},
 	getUserById: function(userId) {
@@ -104,7 +107,16 @@ module.exports = {
 					userId: userId
 				}, collections.userCollection)
 				.then(result => {
-					resolve(result);
+					mongoConnector.find({
+							userId: userId,
+							imageType: imageTypes.avatar
+						}, collections.imagesCollection)
+						.then(avatar => {
+							result.avatar = avatar.imageId;
+							resolve(result);
+						}).catch(err => {
+							reject(err);
+						})
 				})
 				.catch(err => {
 					reject(err);
@@ -114,23 +126,23 @@ module.exports = {
 	saveUserProfile: function(userId, profile) {
 		return new Promise(function(resolve, reject) {
 			mongoConnector.find({
-				userId: userId
-			}, collections.userCollection)
+					userId: userId
+				}, collections.userCollection)
 				.then(existingUser => {
 					if (existingUser) {
 						existingUser = extend(existingUser, profile);
 						mongoConnector.edit({
-							userId: userId
-						}, existingUser, collections.userCollection)
-							.then(()=>{
+								userId: userId
+							}, existingUser, collections.userCollection)
+							.then(() => {
 								resolve();
 							})
-							.cacth(err=> {
+							.catch(err => {
 								reject(err);
 							});
 					}
 					else {
-						reject('could not find user with ID [' + userId +']');
+						reject('could not find user with ID [' + userId + ']');
 					}
 				})
 				.catch(err => {
@@ -139,58 +151,64 @@ module.exports = {
 		});
 	},
 	saveUserTools: function(userId, tools) {
-		return new Promise(function(resolve, reject){
-			mongoConnector.find({
-				userId: userId
-			}, collections.userCollection)
-				.then(existingUser=> {
-					if (existingUser) {
-						existingUser.tools = tools;
-						mongoConnector.edit({
-							userId: userId
-						}, existingUser, collections.userCollection)
-							.then(() => {
-								resolve()
-							})
-							.catch(err=> {
-								reject(err);
-							});
-					}
-					else {
-						reject('could not find user with ID [' + userId +']');
-					}	
-				})
-		});
-	},
-	setUserLoginData: function(userId, currentLocation, registrationId) {
-		return new Promise(function(resolve, reject){
+		return new Promise(function(resolve, reject) {
 			mongoConnector.edit({
-				userId: userId
-			}, {
-				currentLocation: currentLocation,
-				registrationId: registrationId
-			}, collections.userCollection)
-				.then(()=> {
+					userId: userId
+				}, {
+					tools: tools
+				}, collections.userCollection)
+				.then(() => {
 					resolve();
 				})
-				.catch(err=> {
+				.catch(err => {
 					reject(err);
 				})
 		});
 	},
-	getUsersCloseBy: function(lat, lng, userId, next) {
-		return new Promise(function(resolve, reject){
+	setUserLoginData: function(userId, currentLocation, registrationId) {
+		return new Promise(function(resolve, reject) {
+			mongoConnector.edit({
+					userId: userId
+				}, {
+					currentLocation: currentLocation,
+					registrationId: registrationId
+				}, collections.userCollection)
+				.then(() => {
+					resolve();
+				})
+				.catch(err => {
+					reject(err);
+				})
+		});
+	},
+	getUsersCloseBy: function(lat, lng, userId) {
+		return new Promise(function(resolve, reject) {
 			var self = this;
 			mongoConnector.search({
-				$where: function() {
-					return this.userId != userId &&
-						self.farwaway(this.currentLocation.lat, this.currentLocation.lng, lat, lng) < 10;
-				}
-			}, collections.userCollection)
-				.then(result=> {
+					$where: function() {
+						return this.userId != userId &&
+							self.farwaway(this.currentLocation.lat, this.currentLocation.lng, lat, lng) < 10;
+					}
+				}, collections.userCollection)
+				.then(result => {
 					resolve(result);
 				})
-				.catch(err=> {
+				.catch(err => {
+					reject(err);
+				})
+		});
+	},
+	saveUserPreferences: function(userId, preferences) {
+		return new Promise(function(resolve, reject) {
+			mongoConnector.edit({
+					userId: userId
+				}, {
+					preferences: preferences
+				}, collections.userCollection)
+				.then(() => {
+					resolve();
+				})
+				.catch(err => {
 					reject(err);
 				})
 		});

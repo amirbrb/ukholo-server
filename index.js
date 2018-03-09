@@ -4,12 +4,14 @@ const bodyParser = require('body-parser')
 const jwt = require('jsonwebtoken');
 const helmet = require('helmet');
 const applicationArguments = require('yargs').argv;
-const configuration = require('./config/application.' + applicationArguments.ENV);
+var env = applicationArguments.ENV || 'dev';
+process.env.ENV = env;
+const configuration = require('./config/application.' + process.env.ENV);
 
-var port = process.env.PORT || applicationArguments.PORT;
+var port = process.env.PORT || applicationArguments.PORT || 3000;
+process.env.PORT = port;
 
-app.set('tokenSecret', configuration.tokenSecret);
-app.set('ENV', applicationArguments.ENV);
+process.env.tokenSecret = configuration.tokenSecret;
 
 //body parser
 app.use(bodyParser.urlencoded({ extended: false }));
@@ -47,10 +49,10 @@ app.use('/users', users);
 const images = require('./routes/images');
 app.use('/images', images);
 
-const sos = require('./routes/sos');
-app.use('/sos', sos);
+const events = require('./routes/events');
+app.use('/events', events);
 
-app.get('/', function(req, res){
+app.get('/', function(req, res) {
     res.send('Hi!');
 });
 

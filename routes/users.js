@@ -5,122 +5,159 @@ const app = express();
 const Guid = require('guid')
 const fs = require('fs');
 const path = require('path')
-const jwt = require('jsonwebtoken');
 const usersDataService = require('../dataServices/usersDataService');
 const sosDataService = require('../dataServices/helpDataService');
 const startupData = require('../models/startupData');
 const jsonSuccess = require('../models/jsonSuccess');
 const jsonFailure = require('../models/jsonFailure');
 const imageServices = require('../services/imagesService');
+const jwtServices = require("../services/jwtService")
+const imageType = require('../enumerations/imageType');
 
-var validateToken = function(req, res, next) {
-	var token = req.query.mb_token || req.body.mb_token || req.headers.mb_token;
-	if (token) {
-		jwt.verify(token, app.get('tokenSecret'), function(err, decoded) {
-			if (err) {
-				return res.json({ success: false, message: 'Failed to authenticate token.' });
-			}
-			else {
-				next();
-			}
-		});
-	}
-	else {
-		return res.status(403).send({
-			success: false,
-			message: 'No token provided.'
-		});
+router.get('/:id/details/', function(req, res) {
+	jwtServices.validateToken(req)
+		.then(() => {
+			var userId = req.params.id;
+			usersDataService.getUserById(userId)
+				.then(response => {
+					if (response) {
+						delete response.password;
+						res.send(jsonSuccess(response));
+					}
+					else {
+						res.send(jsonFailure('could not find user with ID ' + userId));
+					}
+				})
+				.catch(err => {
+					res.send(jsonFailure(err));
+				})
+		})
+		.catch(err => {
+			res.send(jsonFailure(err));
+		})
+});
 
-	}
+router.get('/:id/events/', function(req, res) {
+	jwtServices.validateToken(req)
+		.then(() => {
+			var userId = req.params.id;
+			sosDataService.getHelpCasesByUserId(userId)
+				.then(cases => {
+					res.send(jsonSuccess(cases));
+				})
+				.catch(err => {
+					res.send(jsonFailure(err));
+				});
+		})
+		.catch(err => {
+			res.send(jsonFailure(err));
+		})
+});
+
+router.get('/:id/avatar/', function(req, res) {
+	jwtServices.validateToken(req)
+		.then(() => {
+			var userId = req.params.id;
+			usersDataService.getUserById(userId)
+				.then(result => {
+					if (result) {
+						var imageId = result.avatar;
+						imageServices.getImage(imageId)
+							.then(result => {
+								imageServices.showImage(result, res);
+							}).catch(err => {
+								res.send(jsonFailure(err));
+							});
+					}
+					else {
+						res.send('');
+					}
+				})
+				.catch(err => {
+					res.send(jsonFailure(err));
+				});
+		})
+		.catch(err => {
+			res.send(jsonFailure(err));
+		})
+});
+
+router.post('/:id/preferences', function(req, res) {
+	jwtServices.validateToken(req)
+		.then(() => {
+			var userId = req.params.id;
+			var preferences = JSON.parse(req.body.preferences);
+			usersDataService.saveUserPreferences(userId, preferences)
+				.then(response => {
+					res.send(jsonSuccess(response));
+				})
+				.catch(err => {
+					res.send(jsonFailure(err))
+				});
+		})
+		.catch(err => {
+			res.send(jsonFailure(err));
+		})
+});
+
+var saveProfileData = function(userId, profileData, res) {
+	usersDataService.saveUserProfile(userId, profileData)
+		.then(response => {
+			res.send(jsonSuccess(response));
+		})
+		.catch(err => {
+			res.send(jsonFailure(err));
+		})
 }
 
-var storage = multer.diskStorage({
-	destination: function(req, file, callback) {
-		callback(null, 'img/');
-	},
-	filename: function(req, file, callback) {
-		var fileName = req.uploadKey.value + file.originalname;
-		callback(null, fileName);
-	}
-});
 
-var upload = multer({ storage: storage }).any();
+router.post('/:id/settings/profile', imageServices.uploadService.single('avatar'),
+	function(req, res) {
+		jwtServices.validateToken(req)
+			.then(() => {
+				var avatar = null;
+				var profileData = JSON.parse(req.body.settings);
+				var file = req.file;
+				var userId = req.params.id;
+				var options = {
+					userId: userId,
+					imageType: imageType.avatar,
+					key: Guid.create().value
+				};
 
-router.get('/details/:id', function(req, res) {
-	validateToken(req, res, function() {
-		var userId = req.params.id;
-		usersDataService.getUserById(userId, function(response) {
-			if (response) {
-				delete response.password;
-				res.send(response);
-			}
-			else {
-				res.send('');
-			}
-		});
-	})
-});
+				imageServices.uploadSingleFile(file, options)
+					.then(fileName => {
+						avatar = fileName;
+						if (avatar) {
+							profileData.avatar = avatar;
+						}
+						saveProfileData(userId, profileData)
+					})
+					.catch(err => {
+						avatar = null;
+					})
+			})
+			.catch(err => {
+				res.send(jsonFailure(err));
+			})
+	});
 
-router.get('/cases/:id', function(req, res) {
-	validateToken(req, res, function() {
-		var userId = req.params.id;
-		sosDataService.getHelpCasesByUserId(userId, function(cases) {
-			res.send(cases);
+router.post('/:id/settings/tools', function(req, res) {
+	jwtServices.validateToken(req)
+		.then(() => {
+			var userId = req.params.id;
+			var tools = JSON.parse(req.body.selectedTools);
+			usersDataService.saveUserTools(userId, tools)
+				.then(response => {
+					res.send(jsonSuccess(response));
+				})
+				.catch(err => {
+					res.send(jsonFailure(err))
+				});
 		})
-	})
-});
-
-router.post('/settings/profile', function(req, res) {
-	validateToken(req, res, function() {
-		req.uploadKey = Guid.create();
-		upload(req, res, function(err) {
-			var userId = req.body.userId;
-			var profileData = JSON.parse(req.body.settings);
-			var avatar = null;
-			if (req.files && req.files.length > 0) {
-				var userAvatar = req.files.map(img => {
-					imageServices.uploadImage(img,
-						function(response) {
-
-						},
-						function(error) {
-
-						});
-					return img.filename
-				})[0];
-
-				profileData.avatar = userAvatar;
-			}
-
-			usersDataService.saveUserProfile(userId, profileData, function(response) {
-				if (response.isSuccess) {
-					res.send(jsonSuccess());
-				}
-				else {
-					res.send(jsonFailure());
-				}
-			});
+		.catch(err => {
+			res.send(jsonFailure(err));
 		});
-	});
-});
-
-router.post('/settings/tools', function(req, res) {
-	validateToken(req, res, function() {
-		req.uploadKey = Guid.create();
-		upload(req, res, function(err) {
-			var userId = req.body.userId;
-			var selectedTools = req.body.selectedTools.split(',');
-			var avatar = null
-			usersDataService.saveUserTools(userId, selectedTools, function(response) {
-				if (response.isSuccess) {
-					res.send(jsonSuccess());
-				}
-				else {
-					res.send(jsonFailure());
-				}
-			});
-		});
-	});
 });
 
 module.exports = router;
