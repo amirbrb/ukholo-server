@@ -35,7 +35,7 @@ router.post('/register', imageServices.uploadService.single('avatar'),
                     lng: req.body.lng
                 }
 
-                usersDataService.register(mail, password, name, phoneNumber, key)
+                usersDataService.register(mail, password, name, phoneNumber, key, avatar)
                     .then(registrationResponse => {
                         if (registrationResponse.isSuccess) {
                             usersDataService.setUserLoginData(registrationResponse.registrationData.userId, location, registrationId)

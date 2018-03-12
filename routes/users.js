@@ -131,7 +131,7 @@ router.post('/:id/settings/profile', imageServices.uploadService.single('avatar'
 						if (avatar) {
 							profileData.avatar = avatar;
 						}
-						saveProfileData(userId, profileData)
+						saveProfileData(userId, profileData, res)
 					})
 					.catch(err => {
 						avatar = null;

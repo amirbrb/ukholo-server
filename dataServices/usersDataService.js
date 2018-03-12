@@ -9,7 +9,7 @@ const imagesService = require("../services/imagesService");
 const extend = require("extend");
 
 module.exports = {
-	register: function(mail, password, name, phoneNumber, key) {
+	register: function(mail, password, name, phoneNumber, key, avatar) {
 		return new Promise(function(resolve, reject) {
 			mongoConnector.find({
 					mail: mail
@@ -26,10 +26,7 @@ module.exports = {
 			var user = {
 				_id: key,
 				userId: key,
-				mail: mail,
 				password: password,
-				name: name,
-				phoneNumber: phoneNumber,
 				currentLocation: {},
 				settings: {
 					notificationSettings: {
@@ -47,8 +44,14 @@ module.exports = {
 
 					},
 				},
-				description: '',
-				gender: 3,
+				profile: {
+					mail: mail,
+					avatar: avatar,
+					name: name,
+					phoneNumber: phoneNumber,
+					description: '',
+					gender: 3,
+				},
 				tools: []
 			};
 			//insert user to db and return model
@@ -64,7 +67,7 @@ module.exports = {
 	login: function(mail, password) {
 		return new Promise(function(resolve, reject) {
 			mongoConnector.find({
-					mail: mail
+					"profile.mail": mail
 				}, collections.userCollection)
 				.then(existingUser => {
 					if (existingUser) {
@@ -86,7 +89,7 @@ module.exports = {
 	getUserByName: function(mail) {
 		return new Promise(function(resolve, reject) {
 			mongoConnector.find({
-					mail: mail
+					"profile.mail": mail
 				}, collections.userCollection)
 				.then(existingUser => {
 					if (existingUser) {
@@ -125,29 +128,16 @@ module.exports = {
 	},
 	saveUserProfile: function(userId, profile) {
 		return new Promise(function(resolve, reject) {
-			mongoConnector.find({
-					userId: userId
-				}, collections.userCollection)
-				.then(existingUser => {
-					if (existingUser) {
-						existingUser = extend(existingUser, profile);
-						mongoConnector.edit({
-								userId: userId
-							}, existingUser, collections.userCollection)
-							.then(() => {
-								resolve();
-							})
-							.catch(err => {
-								reject(err);
-							});
-					}
-					else {
-						reject('could not find user with ID [' + userId + ']');
-					}
-				})
-				.catch(err => {
-					reject(err);
-				})
+			mongoConnector.edit({
+				userId: userId
+			}, { 
+				profile: profile
+			}, collections.userCollection).then(() => {
+				resolve();
+			})
+			.catch(err => {
+				reject(err);
+			});
 		});
 	},
 	saveUserTools: function(userId, tools) {
