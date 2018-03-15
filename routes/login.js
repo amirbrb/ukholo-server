@@ -10,10 +10,14 @@ const jsonSuccess = require('../models/jsonSuccess');
 const jsonFailure = require('../models/jsonFailure');
 const imageType = require('../enumerations/imageType');
 const jwtServices = require("../services/jwtService")
-
+const systemDataService = require("../dataServices/systemDataService");
 router.use(function(req, res, next) {
     next();
 });
+
+var getStartupData = function(){
+    return systemDataService.getStartupData();
+}
 
 router.post('/register', imageServices.uploadService.single('avatar'),
     function(req, res) {
@@ -41,7 +45,8 @@ router.post('/register', imageServices.uploadService.single('avatar'),
                             usersDataService.setUserLoginData(registrationResponse.registrationData.userId, location, registrationId)
                                 .then(() => {
                                     var token = jwtServices.signUser(registrationResponse.registrationData);
-                                    res.send(jsonSuccess(startupData(registrationResponse.registrationData, token)));
+                                    var data = getStartupData(); 
+                                    res.send(jsonSuccess(startupData(data, registrationResponse.registrationData, token)));
                                 }).
                             catch(err => {
                                 //CRA: should log
@@ -72,10 +77,10 @@ router.post('/login', function(req, res) {
             if (loginResponse.isSuccess) {
                 var token = jwtServices.signUser(loginResponse.loginData);
                 delete loginResponse.loginData.password;
-                res.send(jsonSuccess(startupData(loginResponse.loginData, token)));
                 usersDataService.setUserLoginData(loginResponse.loginData.uid, currentLocation, registrationId)
                     .then(() => {
-                        res.send(jsonSuccess(startupData(loginResponse.loginData, token)));
+                        var data = getStartupData(); 
+                        res.send(jsonSuccess(startupData(data, loginResponse.loginData, token)));
                     })
                     .catch(err => {
                         //CRA: should log
@@ -111,7 +116,8 @@ router.post('/relogin', function(req, res) {
                             currentLocation,
                             registrationId)
                         .then(() => {
-                            res.send(jsonSuccess(startupData(loginResponse.loginData, token)));
+                            var data = getStartupData(); 
+                            res.send(jsonSuccess(startupData(data, loginResponse.loginData, token)));
                         })
                         .catch(err => {
                             //CRA: should log
@@ -129,6 +135,16 @@ router.post('/relogin', function(req, res) {
         .catch(err => {
             res.send(jsonFailure(err.message))
         })
+});
+
+router.post('/getStartupData', function(req, res) {
+    var currentLocation = {
+        lat: req.body.lat,
+        lng: req.body.lng,
+    };
+
+    var data = getStartupData(); 
+    res.send(jsonSuccess(startupData(data, null, null)));
 });
 
 module.exports = router;

@@ -1,5 +1,6 @@
-module.exports = function(userData, token) {
+module.exports = function(startupData, userData, token) {
 	return {
+		startupData: startupData,
 		userData: userData,
 		token: token
 	};
