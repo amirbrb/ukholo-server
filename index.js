@@ -1,5 +1,7 @@
 const express = require('express')
 const app = express();
+var http = require('http').Server(app);
+var io = require('socket.io')(http);
 const bodyParser = require('body-parser')
 const jwt = require('jsonwebtoken');
 const helmet = require('helmet');
@@ -52,10 +54,21 @@ app.use('/images', images);
 const events = require('./routes/events');
 app.use('/events', events);
 
-app.get('/', function(req, res) {
-    res.send('Hi!');
+app.get('/i/want/socket', function(req, res) {
+    res.sendFile(__dirname + '/socket.html');
+    //res.send('Hi');
 });
 
-app.listen(port, function() {
+io.on('connection', function(socket){
+    const ioService = require("./services/socketIoService")(io, socket);
+    console.log('user connected');
+    socket.on('disconnect', ioService.disconnect);
+    
+    socket.on('chat-box', ioService.connectToChat);
+    
+    socket.on('chat-message', ioService.messageRecieved);
+    });
+
+http.listen(port, function() {
     console.log('MustB server started at port', port)
 })

@@ -10,7 +10,7 @@ const jsonFailure = require('../models/jsonFailure');
 const helpDataService = require('../dataServices/helpDataService');
 const imageServices = require('../services/imagesService');
 const imageType = require('../enumerations/imageType');
-const jwtServices = require("../services/jwtService")
+const jwtServices = require("../services/jwtService");
 
 router.get('/', function(req, res) {
     jwtServices.validateToken(req)
@@ -86,42 +86,15 @@ router.get('/:id/', function(req, res) {
         })
 });
 
-router.post('/:id/message', function(req, res) {
-    jwtServices.validateToken(req)
-        .then(() => {
-            var caseId = req.params.id;
-            var text = req.body.text;
-            var sender = req.body.userId;
-            var timestamp = moment().format();
-
-            helpDataService.addCaseMessage(caseId, text, sender, timestamp)
-                .then(response => {
-                    res.send(jsonSuccess(response))
-                })
-                .catch(err => {
-                    res.send(jsonFailure(err));
-                })
-        })
-        .catch(err => {
-            res.send(jsonFailure(err));
-        })
-})
-
 router.get('/:id/messages/', function(req, res) {
     jwtServices.validateToken(req)
         .then(() => {
             var id = req.params.id;
-            var lastQuery = req.query.q;
-            helpDataService.getCaseMessages(id, lastQuery)
+            helpDataService.getCaseMessages(id)
                 .then(messages => {
                     messages = messages || [];
-                    var maxTimestamp = lastQuery;
-                    if (messages.length > 0) {
-                        maxTimestamp = moment.max(messages.map(function(message) { return moment(message.timestamp); }));
-                    }
                     res.send(jsonSuccess({
-                        messages: messages,
-                        lastTimestamp: maxTimestamp
+                        messages: messages
                     }))
                 })
                 .catch(err => {

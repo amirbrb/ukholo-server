@@ -138,11 +138,10 @@ module.exports = {
                 })
         });
     },
-    getCaseMessages(id, lastQuery) {
+    getCaseMessages(id) {
         return new Promise(function(resolve, reject) {
             mongoConnector.search({
-                    caseId: id,
-                    timestamp: { $gt: lastQuery }
+                    caseId: id
                 }, collections.chatCollection)
                 .then(messages => {
                     resolve(messages);
