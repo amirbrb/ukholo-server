@@ -67,7 +67,7 @@ io.on('connection', function(socket){
     socket.on('chat-box', ioService.connectToChat);
     
     socket.on('chat-message', ioService.messageRecieved);
-    });
+});
 
 http.listen(port, function() {
     console.log('MustB server started at port', port)

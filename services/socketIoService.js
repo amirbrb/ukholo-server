@@ -31,6 +31,10 @@ module.exports = function(io, socket){
             })
     };
     
+    module.eventStarted = function(eventData){
+        
+    }
+    
     return module;
 }
 
